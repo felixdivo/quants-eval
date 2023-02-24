@@ -1,0 +1,6 @@
+A person {activity}.
+A person is {activity}.
+Someone {activity}.
+Someone is {activity}.
+We see someone who is {activity}.
+The subject is {activity}.
