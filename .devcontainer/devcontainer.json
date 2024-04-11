@@ -7,26 +7,21 @@
 		"context": "..",
 		"args": {
 			"COMPOSE_PROJ_NAME": "ts-qa",
-			"KIND": "3.10"
+			"KIND": "3.11"
 		}
 	},
-	// Features to add to the dev container. More info: https://containers.dev/features.
-	// "features": {},
-	// Use 'forwardPorts' to make a list of ports inside the container available locally.
-	// "forwardPorts": [],
-	// Use 'postCreateCommand' to run commands after the container is created.
-	// "postCreateCommand": "pip3 install --user -r requirements.txt",
-	// Configure tool-specific properties.
-	// "customizations": {},
-	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
-	"settings": {
-		"terminal.integrated.defaultProfile.linux": "zsh"
-	},
+	
 	"remoteUser": "root",
 	"customizations": {
 		"vscode": {
 			"extensions": [
-				"ms-python.python"
+				"ms-python.python",
+				"tamasfe.even-better-toml",
+				"github.copilot",
+				"genieai.chatgpt-vscode",
+				"ms-toolsai.jupyter",
+				"mikestead.dotenv",
+				"ms-python.black-formatter"
 			]
 		}
 	},
