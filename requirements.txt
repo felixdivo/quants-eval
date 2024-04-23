@@ -40,3 +40,11 @@ einops
 # statsmodels==0.13.2
 # sympy==1.11.1
 # sktime==0.4.1
+# ipdp
+tensorboard
+xlrd
+tabulate
+xlwt
+xlutils
+sktime
+aeon

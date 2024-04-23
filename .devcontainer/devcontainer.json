@@ -10,6 +10,20 @@
 			"KIND": "3.11"
 		}
 	},
+	// mount HF_HOME to the container
+	"mounts": [
+		"source=${env:HF_HOME},target=/root/.cache/huggingface/,type=bind,consistency=cached",
+		{
+      "source": "${localEnv:HOME}${localEnv:USERPROFILE}/.wandb_secret",
+      "target": "/.wandb_secret",
+      "type": "bind",
+      "consistency": "ro",
+      "optional": true
+    },
+	],
+	"containerEnv": {
+		"HF_HOME": "/root/.cache/huggingface/"
+	},
 	
 	"remoteUser": "root",
 	"customizations": {
