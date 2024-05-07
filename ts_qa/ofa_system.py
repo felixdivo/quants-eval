@@ -22,6 +22,7 @@ class OFA(ClassificationModelSystem):
         dropout: float,
         d_model: int = 768,
         feat_dim: int = 1,
+        lr: float = 0.0005
         
     ):
         super().__init__(
@@ -32,6 +33,7 @@ class OFA(ClassificationModelSystem):
             max_token_length,
             max_seq_len, patch_size, stride, dropout, num_classes, d_model, feat_dim
         )
+        self.lr = lr
         # self.backbone = Backbone(input_size=1)
         # self.classifier = nn.LazyLinear(num_classes)
 
@@ -41,13 +43,7 @@ class OFA(ClassificationModelSystem):
         #     else:
         #         param.requires_grad = False
 
-        print("Model:\n{}".format(self.model))
-        print("Total number of parameters: {}".format(count_parameters(self.model)))
-        print(
-            "Trainable parameters: {}".format(
-                count_parameters(self.model, trainable=True)
-            )
-        )
+        
 
     def forward(self, x, text):
         # batch x length x feats
@@ -55,5 +51,11 @@ class OFA(ClassificationModelSystem):
         return out
     
     def configure_optimizers(self):
-        optimizer = torch.optim.RAdam(self.parameters(), lr=0.0005)
+        # print("Total number of parameters: {}".format(count_parameters(self.model)))
+        # print(
+        #     "Trainable parameters: {}".format(
+        #         count_parameters(self.model, trainable=True)
+        #     )
+        # )
+        optimizer = torch.optim.RAdam(filter(lambda p: p.requires_grad, self.parameters()), lr=self.lr)
         return optimizer

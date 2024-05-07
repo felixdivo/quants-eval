@@ -25,7 +25,7 @@ class PositionalEmbedding(nn.Module):
         self.register_buffer('pe', pe)
 
     def forward(self, x):
-        return self.pe[:, :x.size(1)]
+       return self.pe[:, :x.size(1)]
 
 
 class TokenEmbedding(nn.Module):
@@ -179,9 +179,23 @@ class DataEmbedding_wo_time(nn.Module):
         super(DataEmbedding_wo_time, self).__init__()
 
         self.value_embedding = TokenEmbedding(c_in=c_in, d_model=d_model)
-        self.position_embedding = PositionalEmbedding(d_model=d_model)
+        self.position_embedding = PositionalEmbedding(d_model=d_model, max_len=1024)
         self.dropout = nn.Dropout(p=dropout)
 
     def forward(self, x):
         x = self.value_embedding(x) + self.position_embedding(x)
+        return self.dropout(x)
+    
+class DataEmbeddingTextConcat(nn.Module):
+    def __init__(self, c_in, d_model, dropout=0.1):
+        super(DataEmbeddingTextConcat, self).__init__()
+
+        self.value_embedding = TokenEmbedding(c_in=c_in, d_model=d_model)
+        self.position_embedding = PositionalEmbedding(d_model=d_model)
+        self.dropout = nn.Dropout(p=dropout)
+
+    def forward(self, x, text_embed):
+        time_embed = self.value_embedding(x)
+        result = torch.concat([text_embed, time_embed], dim=1)
+        x =  result + self.position_embedding(result)
         return self.dropout(x)

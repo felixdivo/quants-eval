@@ -40,8 +40,13 @@ class ClassificationModelSystem(LightningModule):
     def training_step(self, item) -> STEP_OUTPUT:
         question, trajectory, y = item
         y_hat = self(trajectory, question)
+        # print(question[0:2])
 
         loss = self.criteron(y_hat, y)
+
+        
+        # print(nn.functional.softmax(y_hat, dim=-1).argmax(dim=1))
+        # print(y)
 
         batch_size = trajectory.shape[0]
 
