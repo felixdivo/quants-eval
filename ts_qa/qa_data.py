@@ -19,12 +19,12 @@ from ts_qa.linearprobing_callback import LinearProbing2Fine
 
 channels = [
     "pelvis_x",
-    "left_hip_x", 
+    "left_hip_x",
     "right_hip_x",
-    "spine1",  
+    "spine1",
     "left_knee_x",
-    "right_knee_x" ,
-    "spine2_x", 
+    "right_knee_x",
+    "spine2_x",
     "left_ankle",
     "right_ankle",
     "spine3_x",
@@ -36,16 +36,13 @@ channels = [
     "head",
     "left_shoulder_x",
     "right_shoulder_x",
-    "left_elbow", 
-    "right_elbow", 
+    "left_elbow",
+    "right_elbow",
     "left_wrist",
     "right_wrist",
 ]
 
 indices = [i for i, channel in enumerate(channels) if "_x" not in channel]
-
-
-
 
 
 class Scaler:
@@ -67,14 +64,12 @@ class Scaler:
     def fit_transform(self, data: torch.Tensor) -> torch.Tensor:
         self.fit(data)
         return self.transform(data)
-    
 
 
 class DummyDataModule(Dataset):
 
     def __init__(self) -> None:
         super().__init__()
-
 
 
 class TimeQADataset(Dataset):
@@ -92,28 +87,32 @@ class TimeQADataset(Dataset):
 
         joint, xyz = trajectory.shape[0:2]
 
-        trajectory = rearrange(trajectory[indices], "joint xyz len -> 1 len (joint xyz)")
+        trajectory = rearrange(
+            trajectory[indices], "joint xyz len -> 1 len (joint xyz)"
+        )
         # trajectory = rearrange(
         #     self.scaler.transform(trajectory),
         #     "1 len (joint xyz) -> joint xyz len",
         #     joint=joint,
         #     xyz=xyz,
         # )
-        trajectory = rearrange(self.scaler.transform(trajectory), "1 len f -> f len")
+        # trajectory = rearrange(self.scaler.transform(trajectory), "1 len f -> f len")
+        trajectory = rearrange(trajectory, "1 len f -> f len")
 
         return question, trajectory, label
 
 
 class TimeQADataModule(LightningDataModule):
-    KEY = "dasyd/time-qa-simple"
+    KEY = "dasyd/"
 
     def __init__(
         self,
+        name: Literal["time-qa-simple", "time-qa"],
         batch_size: int = 32,
         task: Literal["binary", "multi", "open"] = "binary",
     ):
         super().__init__()
-
+        self.ds_name = TimeQADataModule.KEY + name
         self.batch_size = batch_size
         self.task = task
         self.scaler = Scaler()
@@ -124,7 +123,7 @@ class TimeQADataModule(LightningDataModule):
         for split in splits:
             files[split] = f"{split}-*"
         return load_dataset(
-            TimeQADataModule.KEY,
+            self.ds_name,
             self.task,
             data_dir=self.task,
             data_files=files,
@@ -143,8 +142,8 @@ class TimeQADataModule(LightningDataModule):
         self.dataset = cast(DatasetDict, self.dataset.with_format("torch"))
         trajectory = cast(torch.Tensor, self.dataset["train"]["trajectory"])
 
-        # return torch.Size((trajectory.shape[0], 1,1,300)) # trajectory.shape
-        return trajectory.shape
+        return torch.Size((trajectory.shape[0], len(indices),3,trajectory.shape[-1])) # trajectory.shape
+        # return trajectory.shape
 
     @property
     def max_len(self) -> int:
@@ -154,6 +153,10 @@ class TimeQADataModule(LightningDataModule):
     @property
     def feat_dim(self) -> int:
         return int(torch.mul(*self.__trajectory_shape[1:3]))
+
+    @property
+    def feat_dim_xyz(self) -> int:
+        return int(self.__trajectory_shape[1])
 
     def setup(self, stage: str) -> None:
 
@@ -229,12 +232,11 @@ class OppQADataset(Dataset):
         #     xyz=xyz,
         # )
         # trajectory = rearrange(self.scaler.transform(trajectory), "len f -> f len") #[:1]
-        trajectory = rearrange(trajectory, "len f -> f len") #[:1]
+        trajectory = rearrange(trajectory, "len f -> f len")  # [:1]
 
         return question, trajectory, label
 
 
-    
 class OppQADataModule(LightningDataModule):
     KEY = "dasyd/OppQA"
 
@@ -274,13 +276,18 @@ class OppQADataModule(LightningDataModule):
     def train_dataloader(self) -> DataLoader:
         return DataLoader(
             OppQADataset(self.dataset["train"], scaler=Scaler()),
-             batch_size=self.batch_size, shuffle=True
+            batch_size=self.batch_size,
+            shuffle=True,
         )
 
     def val_dataloader(self) -> DataLoader:
-        return DataLoader(OppQADataset(self.dataset["val"], scaler=Scaler()), batch_size=self.batch_size)
+        return DataLoader(
+            OppQADataset(self.dataset["val"], scaler=Scaler()),
+            batch_size=self.batch_size,
+        )
 
     def test_dataloader(self) -> DataLoader:
-        return DataLoader(OppQADataset(self.dataset["test"], scaler=Scaler()), batch_size=self.batch_size)
-    
-
+        return DataLoader(
+            OppQADataset(self.dataset["test"], scaler=Scaler()),
+            batch_size=self.batch_size,
+        )

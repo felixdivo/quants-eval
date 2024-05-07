@@ -23,33 +23,37 @@ def load_wandb_secret():
 
 def main():
     load_wandb_secret()
-    # datamodule = TimeQADataModule(task="binary", batch_size=10)
-    # datamodule.prepare_data()
-    # # num_classes = len(datamodule.dataset["val"].features["options"])
-    # max_len = datamodule.max_len
-    # feat_dim = datamodule.feat_dim
-    # d_model = 768
-    # max_token_length =  0 #28
-
-    datamodule = OppQADataModule(task="multi", batch_size=32)
-    num_classes = 17
-    feat_dim = 1
+    datamodule = TimeQADataModule(name="time-qa-simple", task="binary", batch_size=10)
+    datamodule.prepare_data()
+    num_classes = 2 #len(datamodule.dataset["val"].features["options"])
+    max_len = datamodule.max_len
+    feat_dim = datamodule.feat_dim
     d_model = 768
-    max_token_length = 40
-    max_len = 1500
+    max_token_length =  40 #28
+    patch_size = 16
+    stride = 8
+
+    # datamodule = OppQADataModule(task="multi", batch_size=32)
+    # num_classes = 17
+    # feat_dim = 1
+    # d_model = 768
+    # max_token_length = 40
+    # max_len = 1500
+    # patch_size = 256
+    # stride = 128
 
     model = OFA(
         max_token_length=max_token_length,
         num_classes=num_classes, #2 if datamodule.task == "binary" else 3,
         max_seq_len=max_len,
-        patch_size=256,
-        stride=128,
+        patch_size=patch_size,
+        stride=stride,
         dropout=0.1,
         d_model=d_model,
         feat_dim=feat_dim,
         lr = 0.0001
     )
-    logger = WandbLogger(project="time-qa", tags=["ofa","alignment", "opp"])
+    logger = WandbLogger(project="time-qa", tags=["ofa","alignment", "simple"])
     # LightningCLI(datamodule_class=TSRegressionDataModule, model_class=OFA)
     trainer = Trainer(
         max_epochs=100, callbacks=[RichProgressBar(),
