@@ -17,6 +17,35 @@ from sklearn.preprocessing import MinMaxScaler
 from ts_qa.linearprobing_callback import LinearProbing2Fine
 
 
+channels = [
+    "pelvis_x",
+    "left_hip_x", 
+    "right_hip_x",
+    "spine1",  
+    "left_knee_x",
+    "right_knee_x" ,
+    "spine2_x", 
+    "left_ankle",
+    "right_ankle",
+    "spine3_x",
+    "left_foot_x",
+    "right_foot_x",
+    "neck_x",
+    "left_collar_x",
+    "right_collar_x",
+    "head",
+    "left_shoulder_x",
+    "right_shoulder_x",
+    "left_elbow", 
+    "right_elbow", 
+    "left_wrist",
+    "right_wrist",
+]
+
+indices = [i for i, channel in enumerate(channels) if "_x" not in channel]
+
+
+
 
 
 class Scaler:
@@ -63,20 +92,20 @@ class TimeQADataset(Dataset):
 
         joint, xyz = trajectory.shape[0:2]
 
-        trajectory = rearrange(trajectory, "joint xyz len -> 1 len (joint xyz)")
+        trajectory = rearrange(trajectory[indices], "joint xyz len -> 1 len (joint xyz)")
         # trajectory = rearrange(
         #     self.scaler.transform(trajectory),
         #     "1 len (joint xyz) -> joint xyz len",
         #     joint=joint,
         #     xyz=xyz,
         # )
-        trajectory = rearrange(self.scaler.transform(trajectory), "1 len f -> f len") #[:1]
+        trajectory = rearrange(self.scaler.transform(trajectory), "1 len f -> f len")
 
         return question, trajectory, label
 
 
 class TimeQADataModule(LightningDataModule):
-    KEY = "dasyd/time-qa"
+    KEY = "dasyd/time-qa-simple"
 
     def __init__(
         self,
