@@ -1,6 +1,13 @@
 {
     "version": "0.2.0",
     "configurations": [
+{
+            "name": "Quants",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "quants",
+            // "args": ["--kind", "mac"]
+        },
         {
             "name": "OppQA",
             "type": "debugpy",

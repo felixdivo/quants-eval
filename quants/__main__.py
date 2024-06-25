@@ -1,0 +1,29 @@
+import torch
+from quants.action_encoder import QuantsBaseline
+from quants.data import TSQADataModule
+from lightning import Trainer
+
+
+if __name__ == "__main__":
+
+    # Load data
+    data_module = TSQADataModule(task="binary", batch_size=128)
+
+
+    # Initialize model
+    model = QuantsBaseline(num_classes=19) 
+
+    trainer = Trainer(max_epochs=2)
+    # trainer.fit(model, data_module)
+    # trainer.save_checkpoint("ckpts/model.ckpt")
+    model.load_state_dict(torch.load("ckpts/model.ckpt")["state_dict"])
+
+    trainer.test(model, data_module)
+
+
+
+
+
+
+
+
