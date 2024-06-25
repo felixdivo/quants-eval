@@ -33,6 +33,7 @@ class GPT4ts(nn.Module):
         self.text_tokenizer.pad_token = self.text_tokenizer.eos_token
         self.text_tokenizer.pad_token_id = self.text_tokenizer.eos_token_id
 
+        # self.gpt2 = nn.LazyLinear(d_model) 
         self.gpt2 = cast(GPT2Model,GPT2Model.from_pretrained('gpt2', output_attentions=True, output_hidden_states=True)).train(True)
 
         self.gpt2.h = self.gpt2.h[:self.gpt_layers]
@@ -57,7 +58,7 @@ class GPT4ts(nn.Module):
         # self.ln_proj = nn.LayerNorm(d_model)
         # self.ln_proj = nn.Lazy
         
-        self.out_layer = nn.Linear(d_model , self.num_classes, bias=False)
+        self.out_layer = nn.Linear(d_model , self.num_classes, bias=True)
         # self.out_layer = nn.Linear(d_model , self.num_classes, bias=False)
         
     def forward(self, x_enc, text=None):
@@ -74,17 +75,25 @@ class GPT4ts(nn.Module):
         #     print(torch.isnan(input_x).any(dim=1))
 
         # input_x = input_x[:,:40]
-        input_x = rearrange(input_x, 'b m n p -> b (n m) p') # interleave variate patches
+        # input_x = rearrange(input_x, 'b m n p -> b (n m) p') # interleave variate patches
+        input_x = rearrange(input_x, 'b m n p -> b (m n) p') # interleave variate patches
 
         text_tok = self.text_tokenizer(text, padding='max_length', truncation=True, max_length=self.max_token_length, return_tensors="pt")["input_ids"].to(input_x.device)
         text_embed = self.gpt2.wte(text_tok)
 
         outputs = self.enc_embedding(input_x, text_embed)
-        output = self.act(self.gpt2(inputs_embeds=outputs).last_hidden_state)
+        # outputs = self.enc_embedding(input_x)
+        # outputs = outputs.reshape(B, -1)
+        # outputs = self.act(self.gpt2(outputs))
+        # outputs = self.out_layer(outputs)
+        outputs = outputs + self.gpt2.wpe(torch.arange(outputs.size(1)).to(outputs.device))
+
+
+        outputs = self.act(self.gpt2(inputs_embeds=outputs).last_hidden_state)
         # output = output.view(B, -1) 
         # output = self.ln_proj(output)       
-        output = self.out_layer(output)
-        logits = output[:, -1]
+        outputs = self.out_layer(outputs)
+        outputs = outputs[:, -1]
 
 
         # outputs = torch.zeros(B, input_x.shape[1], self.patch_num, self.d_model).to(input_x.device)
@@ -125,4 +134,4 @@ class GPT4ts(nn.Module):
         # outputs = self.out_layer(outputs)
         # logits = outputs[:, -1]
         
-        return logits
+        return outputs

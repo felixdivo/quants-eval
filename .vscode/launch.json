@@ -1,2 +1,159 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "OppQA",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "opp_qa",
+            "args": ["--kind", "mac"]
+        },
+        {
+            "name": "Text Only",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "ts_qa",
+            "args": [
+                "--task",
+                "fine",
+                "--kind",
+                "text",
+                "--gpu",
+                "1"
+            ]
+        },
+        {
+            "name": "Time Only",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "ts_qa",
+            "args": [
+                "--task",
+                "fine",
+                "--kind",
+                "time",
+                "--ckpt",
+                "/workspaces/ts-qa/opp-qa/dqul4kud/checkpoints/epoch=5-step=5406.ckpt"
+            ]
+        },
+        {
+            "name": "MM",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "ts_qa",
+            "args": [
+                "--task",
+                "fine",
+                "--kind",
+                "mm",
+                "--gpu",
+                "2"
+            ]
+        },
+        {
+            "name": "Pretrain",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "ts_qa",
+            "args": [
+                "--task",
+                "pretrain",
+                "--kind",
+                "mm"
+            ]
+        },
+        {
+            "name": "TS_QA",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "ts_qa"
+        },
+        {
+            "name": "[OFA-Sanity]",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/OFA_cls/src/main.py",
+            "args": [
+                "--output_dir",
+                "experiments",
+                "--comment",
+                "classification from Scratch",
+                "--name",
+                "EthanolConcentration",
+                "--records_file",
+                "Classification_records.xls",
+                "--data_dir",
+                "./datasets/EthanolConcentration",
+                "--data_class",
+                "tsra",
+                "--pattern",
+                "TRAIN",
+                "--val_pattern",
+                "TEST",
+                "--epochs",
+                "50",
+                "--lr",
+                "0.001",
+                "--patch_size",
+                "8",
+                "--stride",
+                "8",
+                "--optimizer",
+                "RAdam",
+                "--d_model",
+                "768",
+                "--pos_encoding",
+                "learnable",
+                "--task",
+                "classification",
+                "--key_metric",
+                "accuracy"
+            ],
+            "cwd": "/workspaces/ts-qa/OFA_cls"
+        },
+        {
+            "name": "Train Classification Model - Heartbeat",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/OFA_cls/src/main.py",
+            "args": [
+                "--output_dir",
+                "experiments",
+                "--comment",
+                "classification from Scratch",
+                "--name",
+                "Heartbeat",
+                "--records_file",
+                "Classification_records.xls",
+                "--data_dir",
+                "./datasets/Heartbeat",
+                "--data_class",
+                "tsra",
+                "--pattern",
+                "TRAIN",
+                "--val_pattern",
+                "TEST",
+                "--epochs",
+                "50",
+                "--lr",
+                "0.0005",
+                "--patch_size",
+                "32",
+                "--stride",
+                "16",
+                "--optimizer",
+                "RAdam",
+                "--d_model",
+                "768",
+                "--pos_encoding",
+                "learnable",
+                "--task",
+                "classification",
+                "--key_metric",
+                "accuracy"
+            ],
+            "console": "integratedTerminal",
+            "cwd": "/workspaces/ts-qa/OFA_cls"
+        }
     ]
 }

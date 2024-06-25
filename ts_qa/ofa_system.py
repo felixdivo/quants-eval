@@ -57,5 +57,6 @@ class OFA(ClassificationModelSystem):
         #         count_parameters(self.model, trainable=True)
         #     )
         # )
-        optimizer = torch.optim.RAdam(filter(lambda p: p.requires_grad, self.parameters()), lr=self.lr)
+        # optimizer = torch.optim.RAdam(filter(lambda p: p.requires_grad, self.parameters()), lr=self.lr)
+        optimizer = torch.optim.RAdam(self.parameters(), lr=self.lr)
         return optimizer

@@ -197,5 +197,6 @@ class DataEmbeddingTextConcat(nn.Module):
     def forward(self, x, text_embed):
         time_embed = self.value_embedding(x)
         result = torch.concat([text_embed, time_embed], dim=1)
-        x =  result + self.position_embedding(result)
-        return self.dropout(x)
+        x =  result #+ self.position_embedding(result)
+        return result
+        # return #self.dropout(x)

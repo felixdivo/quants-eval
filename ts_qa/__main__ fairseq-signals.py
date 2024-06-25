@@ -10,7 +10,6 @@ import lightning as L
 from .mm_transformer import MMTransformer, MMTransformerPretrain, TextOnlyTransformer, TimeOnlyTransformer
 from argparse import ArgumentParser
 import os 
-import torch.nn as nn 
 
 
 def load_wandb_secret():
@@ -24,8 +23,6 @@ def load_wandb_secret():
     except FileNotFoundError:
         print("The .wandb_secret file was not found.")
 
-
-class L
 
 def main():
     load_wandb_secret()
@@ -42,7 +39,7 @@ def main():
     # os.environ['CUDA_VISIBLE_DEVICES'] = f"1,2"
 
 
-    datamodule = OppQADataModule(batch_size=54, task="binary", short=True)
+    datamodule = OppQADataModule(batch_size=54, task="binary")
     # datamodule = OppQADataModule(batch_size=8, task="binary")
     max_len = 1500
     feat_dim = 77
@@ -57,29 +54,27 @@ def main():
     patch_stride = 16
     tok_len = 30
 
-
-
-    # if args.task == "pretrain":
-    #     # if args.kind == "mm":
-    #     system = MMTransformerPretrain(feat_dim=feat_dim, seq_len=max_len, lr=1e-3, patch_len=patch_len, patch_stride=patch_stride)
-    #     print("Start pretraining")
-    # else:
-    #      # finetune
-    #     if args.kind == "text":
-    #         system = TextOnlyTransformer(num_classes=2, time_grad_mul=1.0, feat_dim=feat_dim, seq_len=max_len, patch_len=patch_len, patch_stride=patch_stride, tok_len=tok_len)
-    #         print("Text only")
-    #     elif args.kind == "time":
-    #         system = TimeOnlyTransformer(num_classes=2, time_grad_mul=1.0, feat_dim=feat_dim, seq_len=max_len, patch_len=patch_len, patch_stride=patch_stride, tok_len=tok_len)
-    #         print("Time only")
-    #     elif args.kind == "mm":
-    #         system = MMTransformer(num_classes=2, time_grad_mul=1.5, feat_dim=feat_dim, seq_len=max_len, lr=5e-5, patch_len=patch_len, patch_stride=patch_stride, tok_len=tok_len)
-    #         print("MM")
-    #     else:
-    #         raise ValueError("Invalid kind")
-    #     if args.ckpt is not None:
-    #         system.load_pretrained(args.ckpt)
-    #         print("Loaded checkpoint")
-    #     system.freeze()
+    if args.task == "pretrain":
+        # if args.kind == "mm":
+        system = MMTransformerPretrain(feat_dim=feat_dim, seq_len=max_len, lr=1e-3, patch_len=patch_len, patch_stride=patch_stride)
+        print("Start pretraining")
+    else:
+         # finetune
+        if args.kind == "text":
+            system = TextOnlyTransformer(num_classes=2, time_grad_mul=1.0, feat_dim=feat_dim, seq_len=max_len, patch_len=patch_len, patch_stride=patch_stride, tok_len=tok_len)
+            print("Text only")
+        elif args.kind == "time":
+            system = TimeOnlyTransformer(num_classes=2, time_grad_mul=1.0, feat_dim=feat_dim, seq_len=max_len, patch_len=patch_len, patch_stride=patch_stride, tok_len=tok_len)
+            print("Time only")
+        elif args.kind == "mm":
+            system = MMTransformer(num_classes=2, time_grad_mul=1.5, feat_dim=feat_dim, seq_len=max_len, lr=5e-5, patch_len=patch_len, patch_stride=patch_stride, tok_len=tok_len)
+            print("MM")
+        else:
+            raise ValueError("Invalid kind")
+        if args.ckpt is not None:
+            system.load_pretrained(args.ckpt)
+            print("Loaded checkpoint")
+        system.freeze()
 
 
     logger = WandbLogger(project="opp-qa", tags=[args.kind,args.task, "binary",])# "v0.0.1"])
@@ -102,7 +97,16 @@ def main():
         # enable_checkpointing=False,
     )
 
-    
+    # system = MMTransformerPretrain(seq_len=max_len, feat_dim=feat_dim)
+    # system = MMTransformer(num_classes=num_classes, time_grad_mul=1.0, feat_dim=feat_dim, seq_len=max_len, lr=0.0005)
+    # for param in system.text_model.encoder.parameters():
+    #     param.requires_grad = False
+
+    # for param in system.tokenizer.parameters():
+    # param.requires_grad = False
+
+    # system = MMTransformer(num_classes=num_classes, time_grad_mul=1.0, feat_dim=feat_dim, seq_len=max_len)
+    # system.load_pretrained("/workspaces/ts-qa/opp-qa/vggkov0d/checkpoints/epoch=11-step=10296.ckpt")
 
     trainer.fit(system, datamodule=datamodule)
 

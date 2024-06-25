@@ -45,8 +45,8 @@ class LinearProbing2Fine(BaseFinetuning):
         #         param.requires_grad = False
 
         if current_epoch == self._unfreeze_at_epoch:
-            unfreeze_modules = map(lambda x: x[1], filter( lambda el: "ln" in el[0] or "wpe" in el[0] or "enc_embedding" in el[0], pl_module.named_modules()))
-            # unfreeze_modules = map(lambda x: x[1], pl_module.named_modules())
+            # unfreeze_modules = map(lambda x: x[1], filter( lambda el: "ln" in el[0] or "wpe" in el[0] or "enc_embedding" in el[0], pl_module.named_modules()))
+            unfreeze_modules = map(lambda x: x[1], pl_module.named_modules())
             self.unfreeze_and_add_param_group(
                 modules=unfreeze_modules,
                 optimizer=optimizer,

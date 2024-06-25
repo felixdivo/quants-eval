@@ -15,7 +15,9 @@ from einops import rearrange
 from lightning.pytorch.loggers import WandbLogger
 from sklearn.preprocessing import MinMaxScaler
 from ts_qa.linearprobing_callback import LinearProbing2Fine
+from transformers import AutoTokenizer, PreTrainedTokenizer, PreTrainedTokenizerFast
 
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 channels = [
     "pelvis_x",
@@ -72,23 +74,36 @@ class DummyDataModule(Dataset):
         super().__init__()
 
 
+# mapping = {0: 5, 1:128, 2: 66, 3: 33, 4: 100, 5: 50, 6: 25, 7: 75, 8: 44, 9: 12, 10:
+
 class TimeQADataset(Dataset):
 
-    def __init__(self, hf_dataset: HFDataset, scaler: Scaler):
+    def __init__(self, hf_dataset: HFDataset, scaler: Scaler, tokenizer: PreTrainedTokenizer | PreTrainedTokenizerFast, max_text_len: int = 40):
         self.hf_dataset = hf_dataset
         self.scaler = scaler
+        self.tokenizer = tokenizer
+        self.max_text_len = max_text_len
 
     def __len__(self):
         return len(self.hf_dataset)
 
+
+
     def __getitem__(self, idx):
+        # idx = mapping[idx]
+        # idx = (idx * 5) % len(self.hf_dataset)
         elem = self.hf_dataset[idx]
         question, trajectory, label = elem["question"], elem["trajectory"], elem["answer"]  # type: ignore
+        
+        # print(f"{idx}: {elem['textual_description']}")
 
         joint, xyz = trajectory.shape[0:2]
 
+        # trajectory = rearrange(
+        #     trajectory[indices], "joint xyz len -> 1 len (joint xyz)"
+        # )
         trajectory = rearrange(
-            trajectory[indices], "joint xyz len -> 1 len (joint xyz)"
+            trajectory, "joint xyz len -> 1 len (joint xyz)"
         )
         # trajectory = rearrange(
         #     self.scaler.transform(trajectory),
@@ -98,8 +113,11 @@ class TimeQADataset(Dataset):
         # )
         # trajectory = rearrange(self.scaler.transform(trajectory), "1 len f -> f len")
         trajectory = rearrange(trajectory, "1 len f -> f len")
+        tok_question = self.tokenizer(question, return_tensors="pt", padding="max_length", max_length=self.max_text_len, truncation=True)
+        input_ids = tok_question["input_ids"].squeeze() # type: ignore
+        attention_mask = tok_question["attention_mask"].squeeze() # type: ignore
 
-        return question, trajectory, label
+        return input_ids, attention_mask, trajectory, label
 
 
 class TimeQADataModule(LightningDataModule):
@@ -110,12 +128,16 @@ class TimeQADataModule(LightningDataModule):
         name: Literal["time-qa-simple", "time-qa"],
         batch_size: int = 32,
         task: Literal["binary", "multi", "open"] = "binary",
+        tag: Literal["main", "v0.0.1", "v0.2.0"] = "v0.2.0",
+        # todo add variable tokenizer
     ):
         super().__init__()
         self.ds_name = TimeQADataModule.KEY + name
         self.batch_size = batch_size
         self.task = task
         self.scaler = Scaler()
+        self.tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+        self.tag = tag
 
     def _load_dataset_split(self, splits: list[str]):
         """Workaround to overcome the missing hf implementation of only dowloading the split shards"""
@@ -125,6 +147,7 @@ class TimeQADataModule(LightningDataModule):
         return load_dataset(
             self.ds_name,
             self.task,
+            revision=self.tag,
             data_dir=self.task,
             data_files=files,
             verification_mode=VerificationMode.NO_CHECKS,
@@ -171,8 +194,10 @@ class TimeQADataModule(LightningDataModule):
                     "batch joint xyz len -> batch len (joint xyz)",
                 )
             )
-            self.train_dataset = TimeQADataset(dataset["train"], self.scaler)
-            self.val_dataset = TimeQADataset(dataset["val"], self.scaler)
+            self.ds_train = dataset["train"]
+            self.ds_val = dataset["val"]
+            self.train_dataset = TimeQADataset(dataset["train"], self.scaler, self.tokenizer)
+            self.val_dataset = TimeQADataset(dataset["val"], self.scaler, self.tokenizer)
 
         elif stage == "test":
             dataset = self._load_dataset_split(["test", "train"])
@@ -186,7 +211,7 @@ class TimeQADataModule(LightningDataModule):
                     "batch joint xyz len -> batch len (joint xyz)",
                 )
             )
-            self.test_dataset = TimeQADataset(dataset["test"], self.scaler)
+            self.test_dataset = TimeQADataset(dataset["test"], self.scaler ,self.tokenizer)
 
     def train_dataloader(self) -> DataLoader:
         return DataLoader(
@@ -209,32 +234,38 @@ class TimeQADataModule(LightningDataModule):
         return DataLoader(self.test_dataset, batch_size=self.batch_size)
 
 
-class OppQADataset(Dataset):
+# class OppQADataset(Dataset):
 
-    def __init__(self, hf_dataset: HFDataset, scaler: Scaler):
-        self.hf_dataset = hf_dataset
-        self.scaler = scaler
+#     def __init__(self, hf_dataset: HFDataset, scaler: Scaler, tokenizer: PreTrainedTokenizer | PreTrainedTokenizerFast):
+#         self.hf_dataset = hf_dataset
+#         self.scaler = scaler
+#         self.tokenizer = tokenizer
 
-    def __len__(self):
-        return len(self.hf_dataset)
+#     def __len__(self):
+#         return len(self.hf_dataset)
 
-    def __getitem__(self, idx):
-        elem = self.hf_dataset[idx]
-        question, trajectory, label = elem["question"], elem["trajectory"], elem["answer"]  # type: ignore
+#     def __getitem__(self, idx):
+#         elem = self.hf_dataset[idx]
+#         question, trajectory, label = elem["question"], elem["trajectory"], elem["answer"]  # type: ignore
 
-        # joint, xyz = trajectory.shape[0:2]
+#         # joint, xyz = trajectory.shape[0:2]
 
-        # trajectory = rearrange(trajectory, "joint xyz len -> 1 len (joint xyz)")
-        # trajectory = rearrange(
-        #     self.scaler.transform(trajectory),
-        #     "1 len (joint xyz) -> joint xyz len",
-        #     joint=joint,
-        #     xyz=xyz,
-        # )
-        # trajectory = rearrange(self.scaler.transform(trajectory), "len f -> f len") #[:1]
-        trajectory = rearrange(trajectory, "len f -> f len")  # [:1]
+#         # trajectory = rearrange(trajectory, "joint xyz len -> 1 len (joint xyz)")
+#         # trajectory = rearrange(
+#         #     self.scaler.transform(trajectory),
+#         #     "1 len (joint xyz) -> joint xyz len",
+#         #     joint=joint,
+#         #     xyz=xyz,
+#         # )
+#         # trajectory = rearrange(self.scaler.transform(trajectory), "len f -> f len") #[:1]
+#         trajectory = rearrange(trajectory, "len f -> f len")  # [:1]
+#         # print(self.tokenizer(question, return_tensors="pt")["input_ids"][0].__len__())
 
-        return question, trajectory, label
+#         tok_question = self.tokenizer(question, return_tensors="pt", padding="max_length", max_length=30, truncation=True)
+#         input_ids = tok_question["input_ids"].squeeze()  # type: ignore
+#         attention_mask = tok_question["attention_mask"].squeeze()  # type: ignore
+
+#         return input_ids,attention_mask, trajectory, label
 
 
 class OppQADataModule(LightningDataModule):
@@ -243,18 +274,21 @@ class OppQADataModule(LightningDataModule):
     def __init__(
         self,
         batch_size: int = 32,
+        short: bool = False,
         task: Literal["binary", "multi", "open"] = "multi",
     ):
         super().__init__()
 
         self.batch_size = batch_size
         self.task = task
+        self.tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+        self.short = short
 
     def _load_dataset_split(self, splits: list[str]):
         """Workaround to overcome the missing hf implementation of only dowloading the split shards"""
 
         return load_dataset(
-            OppQADataModule.KEY,
+            OppQADataModule.KEY + "-500"if self.short else "",
             self.task,
             data_dir=self.task,
             data_files={split: f"{split}-*" for split in splits},
@@ -271,23 +305,31 @@ class OppQADataModule(LightningDataModule):
         elif stage == "test":
             self.dataset = self._load_dataset_split(["test"])
 
-        self.dataset = self.dataset.with_format("torch")
+        self.dataset = self.dataset.map(lambda x: self.tokenizer(x['question'], padding="max_length", max_length=30, truncation=True), batched=True)
+
+        self.dataset = self.dataset.with_format(type='torch', columns=['input_ids', 'attention_mask', 'trajectory', 'answer'])
+
+        # self.dataset = self.dataset.with_format("torch")
 
     def train_dataloader(self) -> DataLoader:
         return DataLoader(
-            OppQADataset(self.dataset["train"], scaler=Scaler()),
+            # OppQADataset(self.dataset["train"], scaler=Scaler(), tokenizer=self.tokenizer),
+            self.dataset["train"],
             batch_size=self.batch_size,
             shuffle=True,
+            # num_workers=100
+            # num_workers=50
         )
 
     def val_dataloader(self) -> DataLoader:
         return DataLoader(
-            OppQADataset(self.dataset["val"], scaler=Scaler()),
+            self.dataset["val"],
             batch_size=self.batch_size,
+            # num_workers=50
         )
 
     def test_dataloader(self) -> DataLoader:
         return DataLoader(
-            OppQADataset(self.dataset["test"], scaler=Scaler()),
+            self.dataset["test"],
             batch_size=self.batch_size,
         )

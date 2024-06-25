@@ -132,3 +132,8 @@ dmypy.json
 wandb
 multirun
 outputs
+.aim
+preprocess_data
+models
+OFA_cls
+plots
