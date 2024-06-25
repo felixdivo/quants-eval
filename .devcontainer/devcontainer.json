@@ -7,12 +7,13 @@
 		"context": "..",
 		"args": {
 			"COMPOSE_PROJ_NAME": "ts-qa",
-			"KIND": "3.11"
+			"KIND": "3.11",
+			"GITHUB_TOKEN": "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"
 		}
 	},
 	// mount HF_HOME to the container
 	"mounts": [
-		"source=${env:HF_HOME},target=/root/.cache/huggingface/,type=bind,consistency=cached",
+		// "source=${env:HF_HOME},target=/root/.cache/huggingface/,type=bind,consistency=cached",
 		{
       "source": "${localEnv:HOME}${localEnv:USERPROFILE}/.wandb_secret",
       "target": "/.wandb_secret",
@@ -20,11 +21,13 @@
       "consistency": "ro",
       "optional": true
     },
+		"source=/storage-02/common-repos,target=/common-repos,type=bind,consistency=cached"
+
 	],
 	"containerEnv": {
 		"HF_HOME": "/root/.cache/huggingface/"
 	},
-	
+	"postCreateCommand": "huggingface-cli login --token $HF_TOKEN",
 	"remoteUser": "root",
 	"customizations": {
 		"vscode": {
@@ -41,6 +44,9 @@
 	},
 	"runArgs": [
 		"--gpus",
-		"device=0"
+		"device=4",
+		// "\"device=1,2\""
+		"--shm-size",
+		"50G"
 	]
 }
