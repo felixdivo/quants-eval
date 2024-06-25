@@ -1,3 +1,4 @@
+from typing import cast
 from einops import rearrange
 from lightning import LightningModule
 import torch
@@ -9,6 +10,7 @@ from transformers.models.patchtsmixer.modeling_patchtsmixer import (
 import lightning as L
 from aim.pytorch_lightning import AimLogger
 import torchmetrics as tm
+import json
 
 
 class QuantsBaseline(LightningModule):
@@ -54,6 +56,8 @@ class QuantsBaseline(LightningModule):
                 device_map="auto",
             )
 
+            self.tokenizer.padding_side = "left"
+
             self.terminators = [
                 self.tokenizer.eos_token_id,
                 self.tokenizer.convert_tokens_to_ids("<|eot_id|>"),
@@ -79,55 +83,60 @@ class QuantsBaseline(LightningModule):
         }
         example_answer = {"role": "assistant", "content": "[Answer]1[\\Answer]"}
 
+        example_query_fraction = {
+            "role": "user",
+            "content": f"[Timeseries]9,8,10,11[\\Timeseries][Question]Is the person playing guitar at timestep 11.12?[\\Question]",
+        }
+        example_answer_fraction = {
+            "role": "assistant",
+            "content": "[Answer]1[\\Answer]",
+        }
+
         self.make_db_template = lambda question, ids: [
             {
                 "role": "system",
                 "content": (
                     "You are a multimodal time series question answering model"
                     " designed to analyze sequences of actions and respond to queries"
-                    " about them. Your input will be provided in two specific tags: "
-                    "[Action] and [TimeseriesID]. The [Action] tags describe different"
-                    " activities, each associated with a unique [TimeseriesID]."
-                    " When answering questions, refer to these IDs to understand the"
-                    " sequence and nature of the actions in the [Timeseries]...[\\Timeseries]"
-                    " tags. Responses to questions should be enclosed in [Answer]...[\\Answer] tags."
-                    # " If an explanation is necessary, enclose it in [Explanation]...[\\Explanation]"
-                    # " tags.
+                    " about them. The mapping between actions and timeseries IDs will be"
+                    " provided as a reference in the [Action] and [TimeseriesID] tags."
+                    " Actual questions will be provided in the [Question] tag and the corresponding"
+                    " timeseries data in the [Timeseries] tag."
+                    " Each digit in the timeseries represents 4 seconds. Therefore, when a question"
+                    " refers to a specific time step, identify the corresponding digit"
+                    " position by performing integer division of the time step by 4"
+                    " (e.g., for time step 13, the digit position is 13 // 4 = 3)."
+                    " Note that the digit positions are zero-index based, meaning 0 is the first position."
+                    " Responses to questions should be enclosed in [Answer]...[\\Answer] tags and should"
+                    " start with the [Answer] tag."
                     " Your responses should focus on interpreting the action"
-                    " sequences accurately and providing clear answers. " 
-                    # or explanations as required."
-                    "Please ONLY either return '0' for False or '1' for True"
-                    if self.trainer.datamodule.task == "binary" # type: ignore
+                    " sequences accurately and providing clear answers."
+                    " Please ONLY either return '0' for False or '1' for True"
+                    if self.trainer.datamodule.task == "binary"  # type: ignore
                     else ""
                 ),
             },
             db,
-            example_query,
-            example_answer,
+            example_query_fraction,
+            example_answer_fraction,
             {
                 "role": "user",
                 "content": f"[Timeseries]{ids}[\\Timeseries][Question]{question}[\\Question]",
             },
         ]
 
-
         # # Ensure pad_token_id is set
         # if self.llm.config.pad_token_id is None:
         #     self.llm.config.pad_token_id = self.tokenizer.eos_token_id
 
-
-        
-
-
-
         self.generate_answer = lambda messages: self.llm.generate(
             messages,
-            max_new_tokens=64,
+            max_new_tokens=256,
             # attention_mask=attention_mask,
             eos_token_id=self.terminators,
             do_sample=True,
             temperature=0.6,
-            pad_token_id=self.tokenizer.pad_token_id
+            pad_token_id=self.tokenizer.pad_token_id,
             top_p=0.9,
         )
 
@@ -166,7 +175,7 @@ class QuantsBaseline(LightningModule):
         traj = batch["trajectory"]
         traj = rearrange(
             traj,
-            "b (actcnt length) channels -> (b actcnt) length (channels)",
+            "b (actcnt length) channels -> (b actcnt) length channels",
             length=self.ts_length,
         )
 
@@ -174,64 +183,57 @@ class QuantsBaseline(LightningModule):
         outs = rearrange(outs, "(b actcnt) c -> b actcnt c", b=batch_size)
 
         all_explanations = []
-        all_similarities = []
+        pred_answers = []
+
+        messages = [
+            self.make_db_template(batch["question"][i], outs[i].argmax(dim=1).tolist())
+            for i in range(batch_size)
+        ]
+        template_messages = cast(
+            list[str],
+            self.tokenizer.apply_chat_template(
+                messages, add_generation_prompt=True, tokenize=False
+            ),
+        )
+        input_ids = self.tokenizer(
+            template_messages, padding=True, return_tensors="pt"
+        )["input_ids"]
+        input_ids = input_ids.to(self.device)  # type: ignore
+
+        outputs = self.generate_answer(input_ids)
 
         for i in range(batch_size):
-            messages = self.make_db_template(
-                batch["question"][i], outs[i].argmax(dim=1).tolist()
-            )
-            input_ids = self.tokenizer.apply_chat_template(
-                messages, add_generation_prompt=True, return_tensors="pt"
-            ).to(  # type: ignore
-                self.device
-            )
-
-            # Create attention mask
-            # attention_mask = (input_ids != self.tokenizer.pad_token_id).long()
-            outputs = self.generate_answer(input_ids)
-
-            response = outputs[0][input_ids.shape[-1] :]
+            response = outputs[i][input_ids.shape[-1] :]
             resp_str = self.tokenizer.decode(response, skip_special_tokens=True)
-            # if "[Answer]" not in resp_str:
-            #     if "0" in resp_str:
-            #         pred_answer = "0"
-            #     elif "1" in resp_str:
-            #         pred_answer = "1"
-            #     elif "YES" in resp_str.upper():
-            #         pred_answer = "1"
-            #     elif "NO" in resp_str.upper():
-            #         pred_answer = "0"
-            #     else: 
-            #         print("No answer found selecting 0")
-            #         pred_answer = "0"
-            # else:
-            pred_answer = resp_str.split("[Answer]")[1].split("[\\Answer]")[0]
 
-            if "[Explanation]" in resp_str:
-                explanation = resp_str.split("[Explanation]")[1].split(
-                    "[\\Explanation]"
-                )[0]
-            else:
-                explanation = None
-            # failsafe 
-            # if pred_answer.upper() == "NO":
-            #     pred_answer = '0'
-            # elif pred_answer.upper() == "YES":
-            #     pred_answer = '1'
+            pred_answer_str = resp_str.split("[Answer]")[1].split("[\\Answer]")[0]
+            if "[" in pred_answer_str:
+                pred_answer_str = pred_answer_str.split("[")[1].split("]")[0]
 
-            similar = int(pred_answer)
-            # similar = self.eval_text(pred_answer, batch["answer"][i])
+            pred_answer = int(pred_answer_str)
 
-            # all_explanations.append(explanation)
-            all_similarities.append(similar)
+            
+            pred_answers.append(pred_answer)
+
+        
 
         # Calculate accuracy using torchmetrics
-        similarities_tensor = torch.tensor(all_similarities, dtype=torch.float32)
-        targets_tensor = torch.ones_like(
-            similarities_tensor
-        )  # Assuming targets are always 1 for correct answers
+        pred_answers_tensor = torch.tensor(
+            pred_answers, dtype=torch.float32, device=self.device
+        )
+        # targets_tensor = torch.ones_like(
+        #     similarities_tensor
+        # )  # Assuming targets are always 1 for correct answers
 
-        acc = self.test_acc(similarities_tensor, targets_tensor)
+        # find indices where the similarity is 0
+        incorrect_indices = torch.where(pred_answers_tensor != batch["answer"])[0]
+        # print([messages[i][4:] for i in incorrect_indices.tolist()])
+        # Print the desired parts of the messages
+        print(
+            json.dumps([messages[i][4:] for i in incorrect_indices.tolist()], indent=4)
+        )
+
+        acc = self.test_acc(pred_answers_tensor, batch["answer"])
         print(f"Test accuracy: {acc}")
 
         self.log("test/acc", self.test_acc, on_step=True, on_epoch=True, prog_bar=True)
