@@ -77,7 +77,7 @@ class QuantsBaseline(LightningModule):
             "role": "user",
             "content": f"[Timeseries]9,8,10,11[\\Timeseries][Question]Is the person waving before dancing?[\\Question]",
         }
-        example_answer = {"role": "assistant", "content": "[Answer]Yes[\\Answer]"}
+        example_answer = {"role": "assistant", "content": "[Answer]1[\\Answer]"}
 
         self.make_db_template = lambda question, ids: [
             {
@@ -91,10 +91,12 @@ class QuantsBaseline(LightningModule):
                     " When answering questions, refer to these IDs to understand the"
                     " sequence and nature of the actions in the [Timeseries]...[\\Timeseries]"
                     " tags. Responses to questions should be enclosed in [Answer]...[\\Answer] tags."
-                    " If an explanation is necessary, enclose it in [Explanation]...[\\Explanation]"
-                    " tags. Your responses should focus on interpreting the action"
-                    " sequences accurately and providing clear answers or explanations as required."
-                    "Please either return '0' for False or '1' for True"
+                    # " If an explanation is necessary, enclose it in [Explanation]...[\\Explanation]"
+                    # " tags.
+                    " Your responses should focus on interpreting the action"
+                    " sequences accurately and providing clear answers. " 
+                    # or explanations as required."
+                    "Please ONLY either return '0' for False or '1' for True"
                     if self.trainer.datamodule.task == "binary" # type: ignore
                     else ""
                 ),
@@ -123,10 +125,10 @@ class QuantsBaseline(LightningModule):
             max_new_tokens=64,
             # attention_mask=attention_mask,
             eos_token_id=self.terminators,
-            # do_sample=True,
+            do_sample=True,
             temperature=0.6,
             pad_token_id=self.tokenizer.pad_token_id
-            # top_p=0.9,
+            top_p=0.9,
         )
 
     def eval_text(self, pred, reference):
@@ -190,6 +192,19 @@ class QuantsBaseline(LightningModule):
 
             response = outputs[0][input_ids.shape[-1] :]
             resp_str = self.tokenizer.decode(response, skip_special_tokens=True)
+            # if "[Answer]" not in resp_str:
+            #     if "0" in resp_str:
+            #         pred_answer = "0"
+            #     elif "1" in resp_str:
+            #         pred_answer = "1"
+            #     elif "YES" in resp_str.upper():
+            #         pred_answer = "1"
+            #     elif "NO" in resp_str.upper():
+            #         pred_answer = "0"
+            #     else: 
+            #         print("No answer found selecting 0")
+            #         pred_answer = "0"
+            # else:
             pred_answer = resp_str.split("[Answer]")[1].split("[\\Answer]")[0]
 
             if "[Explanation]" in resp_str:
@@ -198,6 +213,11 @@ class QuantsBaseline(LightningModule):
                 )[0]
             else:
                 explanation = None
+            # failsafe 
+            # if pred_answer.upper() == "NO":
+            #     pred_answer = '0'
+            # elif pred_answer.upper() == "YES":
+            #     pred_answer = '1'
 
             similar = int(pred_answer)
             # similar = self.eval_text(pred_answer, batch["answer"][i])
@@ -211,7 +231,8 @@ class QuantsBaseline(LightningModule):
             similarities_tensor
         )  # Assuming targets are always 1 for correct answers
 
-        self.test_acc(similarities_tensor, targets_tensor)
+        acc = self.test_acc(similarities_tensor, targets_tensor)
+        print(f"Test accuracy: {acc}")
 
         self.log("test/acc", self.test_acc, on_step=True, on_epoch=True, prog_bar=True)
 
