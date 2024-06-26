@@ -17,6 +17,7 @@ class QuantsBaseline(LightningModule):
     def __init__(
         self,
         num_classes: int,
+        task: str = "binary",
         ts_length: int = 80,
         num_vars: int = 72,
         patch_length: int = 8,
@@ -40,9 +41,14 @@ class QuantsBaseline(LightningModule):
         self.ts_length = ts_length
         self.train_acc = tm.Accuracy(task="multiclass", num_classes=num_classes)
         self.val_acc = tm.Accuracy(task="multiclass", num_classes=num_classes)
-        self.test_acc = tm.Accuracy(task="binary")
+        if task == "binary":
+            self.test_acc = tm.Accuracy(task="binary")
+        else:
+            self.test_acc = tm.Accuracy(task="multiclass", num_classes=3)
         self.action_predictor = PatchTSMixerForTimeSeriesClassification(self.config)
         self.lr = lr
+        self.skipped_questions = 0
+        self.task = task
         self.save_hyperparameters()
 
     def configure_model(self) -> None:
@@ -77,20 +83,39 @@ class QuantsBaseline(LightningModule):
             ),
         }
 
-        example_query = {
-            "role": "user",
-            "content": f"[Timeseries]9,8,10,11[\\Timeseries][Question]Is the person waving before dancing?[\\Question]",
-        }
-        example_answer = {"role": "assistant", "content": "[Answer]1[\\Answer]"}
+        if self.task == "binary":
+            example_query = {
+                "role": "user",
+                "content": f"[Timeseries]9,8,10,11[\\Timeseries][Question]Is the person waving before dancing?[\\Question]",
+            }
+            example_answer = {"role": "assistant", "content": "[Answer]1[\\Answer]"}
 
-        example_query_fraction = {
-            "role": "user",
-            "content": f"[Timeseries]9,8,10,11[\\Timeseries][Question]Is the person playing guitar at timestep 11.12?[\\Question]",
-        }
-        example_answer_fraction = {
-            "role": "assistant",
-            "content": "[Answer]1[\\Answer]",
-        }
+            example_query_fraction = {
+                "role": "user",
+                "content": f"[Timeseries]9,8,10,11[\\Timeseries][Question]Is the person playing guitar at timestep 11.12?[\\Question]",
+            }
+            example_answer_fraction = {
+                "role": "assistant",
+                "content": "[Answer]1[\\Answer]",
+            }
+            system_prompt_addition = (
+                "Please ONLY either return '0' for False or '1' for True"
+            )
+
+            few_shot_query = [example_query_fraction, example_answer_fraction]
+
+        else:
+            # multi
+            example_query = {
+                "role": "user",
+                "content": f"[Timeseries]2,8,10,11[\\Timeseries][Question]What is the person doing before dancing? A: waving, B: T-posing or C: running?[\\Question]",
+            }
+            example_answer = {
+                "role": "assistant",
+                "content": "[Answer]2[\\Answer][Explanation]The answer is C or number 2 running, because dancing corresponds two the second digit in the provided timeseries (ID 8) and before that (ID 2) running occurs. T-Posing would be ID 18 and waving ID 9.[\\Explanation]",
+            }
+            system_prompt_addition = "Please ONLY return the number 0 for answer A, 1 for answer B, and 2 for answer C"
+            few_shot_query = [example_query, example_answer]
 
         self.make_db_template = lambda question, ids: [
             {
@@ -110,24 +135,18 @@ class QuantsBaseline(LightningModule):
                     " Responses to questions should be enclosed in [Answer]...[\\Answer] tags and should"
                     " start with the [Answer] tag."
                     " Your responses should focus on interpreting the action"
-                    " sequences accurately and providing clear answers."
-                    " Please ONLY either return '0' for False or '1' for True"
-                    if self.trainer.datamodule.task == "binary"  # type: ignore
-                    else ""
-                ),
+                    " sequences accurately and providing clear answers. "
+                )
+                + system_prompt_addition,
             },
             db,
-            example_query_fraction,
-            example_answer_fraction,
+            *few_shot_query,
             {
                 "role": "user",
                 "content": f"[Timeseries]{ids}[\\Timeseries][Question]{question}[\\Question]",
             },
         ]
 
-        # # Ensure pad_token_id is set
-        # if self.llm.config.pad_token_id is None:
-        #     self.llm.config.pad_token_id = self.tokenizer.eos_token_id
 
         self.generate_answer = lambda messages: self.llm.generate(
             messages,
@@ -206,16 +225,32 @@ class QuantsBaseline(LightningModule):
             response = outputs[i][input_ids.shape[-1] :]
             resp_str = self.tokenizer.decode(response, skip_special_tokens=True)
 
+            if "[Answer]" not in resp_str:
+                print(resp_str)
+                print("No answer found in response. Skipping...")
+                self.skipped_questions += 1
+                continue
             pred_answer_str = resp_str.split("[Answer]")[1].split("[\\Answer]")[0]
             if "[" in pred_answer_str:
                 pred_answer_str = pred_answer_str.split("[")[1].split("]")[0]
+            
+            if pred_answer_str in ["0","1","2"]:
+                pred_answer_str = pred_answer_str
+            elif "A" in pred_answer_str:
+                pred_answer_str = "0"
+            elif "B" in pred_answer_str:
+                pred_answer_str = "1"
+            elif "C" in pred_answer_str:
+                pred_answer_str = "2"
+            else:
+                print(resp_str)
+                print("No answer found in response. Skipping...")
+                self.skipped_questions += 1
+                continue
 
             pred_answer = int(pred_answer_str)
 
-            
             pred_answers.append(pred_answer)
-
-        
 
         # Calculate accuracy using torchmetrics
         pred_answers_tensor = torch.tensor(
