@@ -15,6 +15,7 @@ wandb
 lightning
 rich
 aim
+omegaconf
 
 
 # jupyter

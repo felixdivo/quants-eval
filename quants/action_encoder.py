@@ -1,6 +1,8 @@
+from pathlib import Path
 from typing import cast
 from einops import rearrange
 from lightning import LightningModule
+from omegaconf import DictConfig
 import torch
 from transformers import PatchTSMixerConfig, AutoTokenizer, AutoModelForCausalLM
 from transformers.models.patchtsmixer.modeling_patchtsmixer import (
@@ -8,9 +10,9 @@ from transformers.models.patchtsmixer.modeling_patchtsmixer import (
     PatchTSMixerForTimeSeriesClassification,
 )
 import lightning as L
-from aim.pytorch_lightning import AimLogger
 import torchmetrics as tm
 import json
+import re
 
 
 class QuantsBaseline(LightningModule):
@@ -24,6 +26,7 @@ class QuantsBaseline(LightningModule):
         patch_stride: int = 8,
         d_model: int = 40,
         lr: float = 5e-3,
+        config: DictConfig =DictConfig({}),
     ):
         super().__init__()
         self.config = PatchTSMixerConfig(
@@ -49,7 +52,9 @@ class QuantsBaseline(LightningModule):
         self.lr = lr
         self.skipped_questions = 0
         self.task = task
+        self.config = config
         self.save_hyperparameters()
+
 
     def configure_model(self) -> None:
         if self.trainer.state.fn == "test":
@@ -73,77 +78,30 @@ class QuantsBaseline(LightningModule):
 
     def on_test_start(self) -> None:
 
+        fn = self.config.fn
+
         db = {
             "role": "user",
-            "content": "\n".join(
-                [
-                    f"[Action]{action}[\\Action][TimeseriesID]{id}[\\TimeseriesID]"
+            "content": "\n".join([
+                    fn.action.format(action=action) + fn["timeseries_id"].format(id=id)
                     for action, id in self.trainer.datamodule.action_2_idx.items()  # type: ignore
                 ]
             ),
         }
 
-        if self.task == "binary":
-            example_query = {
-                "role": "user",
-                "content": f"[Timeseries]9,8,10,11[\\Timeseries][Question]Is the person waving before dancing?[\\Question]",
-            }
-            example_answer = {"role": "assistant", "content": "[Answer]1[\\Answer]"}
-
-            example_query_fraction = {
-                "role": "user",
-                "content": f"[Timeseries]9,8,10,11[\\Timeseries][Question]Is the person playing guitar at timestep 11.12?[\\Question]",
-            }
-            example_answer_fraction = {
-                "role": "assistant",
-                "content": "[Answer]1[\\Answer]",
-            }
-            system_prompt_addition = (
-                "Please ONLY either return '0' for False or '1' for True"
-            )
-
-            few_shot_query = [example_query_fraction, example_answer_fraction]
-
-        else:
-            # multi
-            example_query = {
-                "role": "user",
-                "content": f"[Timeseries]2,8,10,11[\\Timeseries][Question]What is the person doing before dancing? A: waving, B: T-posing or C: running?[\\Question]",
-            }
-            example_answer = {
-                "role": "assistant",
-                "content": "[Answer]2[\\Answer][Explanation]The answer is C or number 2 running, because dancing corresponds two the second digit in the provided timeseries (ID 8) and before that (ID 2) running occurs. T-Posing would be ID 18 and waving ID 9.[\\Explanation]",
-            }
-            system_prompt_addition = "Please ONLY return the number 0 for answer A, 1 for answer B, and 2 for answer C"
-            few_shot_query = [example_query, example_answer]
+        examples = self.config.examples
+        
 
         self.make_db_template = lambda question, ids: [
             {
                 "role": "system",
-                "content": (
-                    "You are a multimodal time series question answering model"
-                    " designed to analyze sequences of actions and respond to queries"
-                    " about them. The mapping between actions and timeseries IDs will be"
-                    " provided as a reference in the [Action] and [TimeseriesID] tags."
-                    " Actual questions will be provided in the [Question] tag and the corresponding"
-                    " timeseries data in the [Timeseries] tag."
-                    " Each digit in the timeseries represents 4 seconds. Therefore, when a question"
-                    " refers to a specific time step, identify the corresponding digit"
-                    " position by performing integer division of the time step by 4"
-                    " (e.g., for time step 13, the digit position is 13 // 4 = 3)."
-                    " Note that the digit positions are zero-index based, meaning 0 is the first position."
-                    " Responses to questions should be enclosed in [Answer]...[\\Answer] tags and should"
-                    " start with the [Answer] tag."
-                    " Your responses should focus on interpreting the action"
-                    " sequences accurately and providing clear answers. "
-                )
-                + system_prompt_addition,
+                "content": self.config.system.prompt + self.config.system[self.task].addition,
             },
             db,
-            *few_shot_query,
+            *examples,
             {
                 "role": "user",
-                "content": f"[Timeseries]{ids}[\\Timeseries][Question]{question}[\\Question]",
+                "content": fn.timeseries.format(timeseries=','.join(map(str, ids))) + fn.question.format(question=question)
             },
         ]
 
@@ -159,36 +117,7 @@ class QuantsBaseline(LightningModule):
             top_p=0.9,
         )
 
-    def eval_text(self, pred, reference):
-        make_eval_template = lambda pred, gt: [
-            {
-                "role": "system",
-                "content": "You are an evaluation model tasked with assessing the similarity of predicted answers compared to reference answers. For each evaluation, present the predicted answer text within the [Prediction] tag and the reference answer text within the [Reference] tag. Determine if the predicted and reference answers are equivalent. Return '1' for equivalent answers and '0' for non-equivalent answers, enclosed in the [Answer] tag. Additionally, provide your assessment of similarity for each pair in the [Similarity] tag, expressed as a percentage. Only the [Answer] and [Similarity] tags should be returned; no further explanation is required.",
-            },
-            {
-                "role": "user",
-                "content": f"[Prediction]{pred}[\\Prediction][Reference]{gt}[\\Reference]",
-            },
-        ]
-
-        eval_messages = make_eval_template(pred, reference)
-
-        input_ids = self.tokenizer.apply_chat_template(
-            eval_messages, add_generation_prompt=True, return_tensors="pt"
-        ).to(  # type: ignore
-            self.device
-        )
-
-        outputs = self.generate_answer(input_ids)
-
-        response = outputs[0][input_ids.shape[-1] :]
-        resp_str = self.tokenizer.decode(response, skip_special_tokens=True)
-
-        # parse the response, the answer is between the [Answer]...[\Answer] tags and a potential explanation is between the [Explanation]...[\Explanation] tags
-        pred_answer = int(resp_str.split("[Answer]")[1].split("[\\Answer]")[0])
-
-        return pred_answer
-
+   
     def test_step(self, batch):
         batch_size = batch["trajectory"].shape[0]
         traj = batch["trajectory"]
@@ -221,18 +150,39 @@ class QuantsBaseline(LightningModule):
 
         outputs = self.generate_answer(input_ids)
 
+
+        def construct_answer_pattern(template):
+            # Escape special regex characters in the template string
+            escaped_template = re.escape(template)
+            # Replace the escaped placeholder with a regex pattern to capture content
+            pattern = escaped_template.replace(r"\{answer\}", r"(.*?)")
+            return pattern
+
+        # Construct the pattern from the template string
+        pattern = construct_answer_pattern(self.config.fn.answer)
+
+        
+
+
         for i in range(batch_size):
             response = outputs[i][input_ids.shape[-1] :]
             resp_str = self.tokenizer.decode(response, skip_special_tokens=True)
 
-            if "[Answer]" not in resp_str:
+            # Search for the pattern in the input string
+            match = re.search(pattern, resp_str)
+
+            if match:
+                # Extract the matched content
+                pred_answer_str = match.group(1)
+            else:
                 print(resp_str)
                 print("No answer found in response. Skipping...")
                 self.skipped_questions += 1
-                continue
-            pred_answer_str = resp_str.split("[Answer]")[1].split("[\\Answer]")[0]
-            if "[" in pred_answer_str:
-                pred_answer_str = pred_answer_str.split("[")[1].split("]")[0]
+                continue 
+
+            # pred_answer_str = resp_str.split(self.config.tags.answer.start)[1].split(self.config.tags.answer.end)[0]
+            # if "[" in pred_answer_str:
+            #     pred_answer_str = pred_answer_str.split("[")[1].split("]")[0]
             
             if pred_answer_str in ["0","1","2"]:
                 pred_answer_str = pred_answer_str
@@ -256,14 +206,10 @@ class QuantsBaseline(LightningModule):
         pred_answers_tensor = torch.tensor(
             pred_answers, dtype=torch.float32, device=self.device
         )
-        # targets_tensor = torch.ones_like(
-        #     similarities_tensor
-        # )  # Assuming targets are always 1 for correct answers
+       
 
         # find indices where the similarity is 0
         incorrect_indices = torch.where(pred_answers_tensor != batch["answer"])[0]
-        # print([messages[i][4:] for i in incorrect_indices.tolist()])
-        # Print the desired parts of the messages
         print(
             json.dumps([messages[i][4:] for i in incorrect_indices.tolist()], indent=4)
         )

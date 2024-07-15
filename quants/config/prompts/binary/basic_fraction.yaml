@@ -1,0 +1,9 @@
+prompts:
+  - timeseries: 9,8,10,11
+    question: Is the person waving before dancing?
+    description: example_query
+    answer: 1
+  - timeseries: 9,8,10,11
+    question: Is the person playing guitar at timestep 11.12?
+    answer: 1
+    description: example_query_fraction

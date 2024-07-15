@@ -9,6 +9,7 @@ from datasets import (
     DatasetDict,
     VerificationMode,
     Dataset,
+    Array2D
 )
 import os
 from torch.utils.data import DataLoader
@@ -24,6 +25,7 @@ class TSQADataModule(LightningDataModule):
         self,
         batch_size: int = 32,
         task: Literal["binary", "multi", "open", "count"] = "multi",
+        q_type: str = "", # if empty string, all question types are loaded
     ):
         super().__init__()
 
@@ -33,9 +35,10 @@ class TSQADataModule(LightningDataModule):
         self.root_cache.mkdir(parents=True, exist_ok=True)
 
         self.cache_path_action_split = self.root_cache / f"{task}_action_split"
-        self.cache_path_normal = self.root_cache / f"{task}_normal"
-
+        self.cache_path_normal = self.root_cache / f"{task}"
+        self.q_type = q_type
         self.action_2_idx = {}
+
 
     def load_data(self, splits=["val", "train", "test"]) -> DatasetDict:
         ds = load_dataset(
@@ -55,6 +58,8 @@ class TSQADataModule(LightningDataModule):
 
         action_2_idx = {}
 
+        question_type_gp_datasets = {}
+
         def convert_action(action_dict):
             action_list = action_dict["action"]
             for action in action_list:
@@ -68,7 +73,7 @@ class TSQADataModule(LightningDataModule):
             action_ids = convert_action(x["action_sequence"])
             return action_ids, traj
 
-        for sp in ["train", "val", "test"]:
+        for sp in tqdm(["train", "val", "test"], desc=f"Processing splits Action Split: {action_split}"):
             ds_split = ds[sp]
 
             if action_split:
@@ -87,31 +92,52 @@ class TSQADataModule(LightningDataModule):
                     {"action_ids": action_ids, "trajectory": trajs}
                 )
 
+                ds[sp] = new_ds
             else:
                 new_ds = ds_split.map(
                     lambda x: {"trajectory": x["trajectory"].view(-1, 24 * 3)}
                 )
-
-            ds[sp] = new_ds
+                for item in tqdm(new_ds, desc=f"Processing question types for {sp}"):
+                    question_type = item["question_type"]
+                    question_type_gp_datasets.setdefault(
+                        question_type, {"train": [], "val": [], "test": []}
+                    )[sp].append(item)
 
         if action_split:
             ds.save_to_disk(str(self.cache_path_action_split))
             with open(self.root_cache / "action2idx.pkl", "wb") as f:
                 pickle.dump(action_2_idx, f)
         else:
-            ds.save_to_disk(str(self.cache_path_normal))
+            features = ds["train"].features
+            traj_shape = features["trajectory"].shape
+            
+            features["trajectory"] = Array2D((traj_shape[0],  traj_shape[1] * traj_shape[2]), dtype=features["trajectory"].dtype)
+
+            for qt, split_dict in tqdm(question_type_gp_datasets.items(), desc="Saving question types to datasets"):
+                ds_dict = DatasetDict()
+                ds_dict["train"] = Dataset.from_list(
+                    split_dict["train"], features=features
+                )
+                ds_dict["val"] = Dataset.from_list(split_dict["val"], features=features)
+                ds_dict["test"] = Dataset.from_list(
+                    split_dict["test"], features=features
+                )
+                ds_dict.save_to_disk(str(self.cache_path_normal / qt.replace(f"_{self.task}", "")))
 
     def prepare_data(self) -> None:
         if not os.path.exists(self.cache_path_action_split):
             self.process(action_split=True)
-        if not os.path.exists(self.cache_path_normal):
+        self.cache_path_normal.mkdir(exist_ok=True)
+        # count folder in the cache path
+        cnt = sum(1 for item in self.cache_path_normal.iterdir() if item.is_dir())
+        if cnt != 18:  # TODO this is hardcoded amount of question types
             self.process(action_split=False)
 
     def setup(self, stage: str) -> None:
         if stage in ["fit", "validate"]:
             self.dataset: DatasetDict = load_from_disk(str(self.cache_path_action_split))  # type: ignore
         else:
-            self.dataset: DatasetDict = load_from_disk(str(self.cache_path_normal))  # type: ignore
+            self.dataset: DatasetDict = load_from_disk(str(self.cache_path_normal / self.q_type))  # type: ignore
 
         self.dataset: DatasetDict = self.dataset.with_format("torch")
         with open(self.root_cache / "action2idx.pkl", "rb") as f:
@@ -137,7 +163,7 @@ class TSQADataModule(LightningDataModule):
     def test_dataloader(self) -> DataLoader:
         return DataLoader(
             self.dataset["test"],  # type: ignore
-            batch_size=20 if self.task == "binary" else 15,
+            batch_size=15 if self.task == "binary" else 15,
         )
 
     def predict_dataloader(self) -> DataLoader:
