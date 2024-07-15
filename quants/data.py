@@ -96,7 +96,8 @@ class TSQADataModule(LightningDataModule):
 
         if action_split:
             ds.save_to_disk(str(self.cache_path_action_split))
-            pickle.dump(action_2_idx, open(self.root_cache / "action2idx.pkl", "wb"))
+            with open(self.root_cache / "action2idx.pkl", "wb") as f:
+                pickle.dump(action_2_idx, f)
         else:
             ds.save_to_disk(str(self.cache_path_normal))
 
@@ -113,7 +114,8 @@ class TSQADataModule(LightningDataModule):
             self.dataset: DatasetDict = load_from_disk(str(self.cache_path_normal))  # type: ignore
 
         self.dataset: DatasetDict = self.dataset.with_format("torch")
-        self.action_2_idx = pickle.load(open(self.root_cache / "action2idx.pkl", "rb"))
+        with open(self.root_cache / "action2idx.pkl", "rb") as f:
+            self.action_2_idx = pickle.load(f)
 
     def train_dataloader(self) -> DataLoader:
         return DataLoader(
