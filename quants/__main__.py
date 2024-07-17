@@ -14,17 +14,31 @@ from omegaconf import OmegaConf
 from pathlib import Path
 import os
 import tempfile
-
-
+from rich.console import Console
+from rich.syntax import Syntax
 
 
 def qa_builder(q_template,a_template, prompts): 
-    final_prompts = []
-    for p in prompts:
-        final_prompts.append({"role":"user", "content": q_template.format(**p)})
-        final_prompts.append({"role": "assistant", "content": a_template.format(**p)})
+    final_prompts = ""
+    should_add_id = len(prompts) > 1
+    for idx, p in enumerate(prompts):
+        final_prompts += "\nExample"
+        if should_add_id:
+            final_prompts += f" {idx+1}"
+        final_prompts += f":\n{q_template.format(**p)}\n{a_template.format(**p)}"
 
     return final_prompts
+
+
+
+
+# def qa_builder(q_template,a_template, prompts): 
+#     final_prompts = []
+#     for p in prompts:
+#         final_prompts.append({"role":"user", "content": q_template.format(**p)})
+#         final_prompts.append({"role": "assistant", "content": a_template.format(**p)})
+
+#     return final_prompts
 
 OmegaConf.register_new_resolver( "qa_builder", qa_builder, replace=True)
 
@@ -64,7 +78,7 @@ def load_and_merge_configs(config_path: Path):
     return config
 
 # Path to the default configuration file
-default_config_file = Path(os.getcwd()) / "quants" / "config" / "new.yaml"
+default_config_file = Path(os.getcwd()) / "quants" / "config" / "outlines.yaml"
 
 
 
@@ -80,7 +94,7 @@ def evaluate_question_type(task, t, idx, total_types, config):
         temp_file.write(yaml_string.encode('utf-8'))
         temp_file_path = temp_file.name
 
-    exp = wandb.init(project="quants", entity="maurice-kraus", group=f"{task}-{t}", job_type="eval", tags=["new"])
+    exp = wandb.init(project="quants", entity="ml-research", group=f"{task}-{t}", job_type="eval", tags=["dbg"])
 
     artifact = wandb.Artifact('llm_template', type='config')
     artifact.add_file(temp_file_path)
@@ -93,7 +107,7 @@ def evaluate_question_type(task, t, idx, total_types, config):
     
     model_ckpt_path = f"/workspaces/ts-qa/ckpts/model-{task}.ckpt"
     if Path(model_ckpt_path).exists():
-        model = QuantsBaseline(num_classes=19, task=task, config=config)
+        model = QuantsBaseline(num_classes=19, task=task, config=config, gt_annotations=True)
         model.load_state_dict(
             torch.load(model_ckpt_path)["state_dict"]
         )
@@ -143,15 +157,18 @@ if __name__ == "__main__":
         trainer.fit(model, data_module)
         trainer.save_checkpoint(model_ckpt_path)
 
-    types = [item.name for item in task_data_folder.iterdir() if item.is_dir()]
+    types = [item.name for item in task_data_folder.iterdir() if item.is_dir()][13:15]
     print("Evaluating question types")
 
 
     # Load and merge configurations
     config = load_and_merge_configs(default_config_file)
 
-    # Print configuration values
-    rich.print(OmegaConf.to_yaml(config, resolve=True))
+    console = Console()
+
+    syntax = Syntax(OmegaConf.to_yaml(config, resolve=True), 'yaml')
+    console.print(syntax)
+
     
     # # Use map to apply the evaluate_question_type function sequentially
     for idx, t in enumerate(types):

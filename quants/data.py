@@ -165,7 +165,7 @@ class TSQADataModule(LightningDataModule):
     def test_dataloader(self) -> DataLoader:
         return DataLoader(
             self.dataset["test"],  # type: ignore
-            batch_size=15 if self.task == "binary" else 15,
+            batch_size=14 if self.task == "binary" else 15,
         )
 
     def predict_dataloader(self) -> DataLoader:
