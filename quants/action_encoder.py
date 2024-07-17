@@ -45,16 +45,15 @@ class QuantsBaseline(LightningModule):
         self.train_acc = tm.Accuracy(task="multiclass", num_classes=num_classes)
         self.val_acc = tm.Accuracy(task="multiclass", num_classes=num_classes)
         if task == "binary":
-            self.test_acc = tm.Accuracy(task="binary")
+            self.test_metrics = tm.MetricCollection([tm.Accuracy(task="binary"), tm.F1Score(task="binary")],prefix="test/")
         else:
-            self.test_acc = tm.Accuracy(task="multiclass", num_classes=3)
+            self.test_metrics = tm.MetricCollection([tm.Accuracy(task="multiclass", num_classes=num_classes), tm.F1Score(task="multiclass", num_classes=num_classes)],prefix="test/")
         self.action_predictor = PatchTSMixerForTimeSeriesClassification(self.config)
         self.lr = lr
         self.skipped_questions = 0
         self.task = task
         self.config = config
         self.save_hyperparameters()
-
 
     def configure_model(self) -> None:
         if self.trainer.state.fn == "test":
@@ -77,28 +76,32 @@ class QuantsBaseline(LightningModule):
                 self.tokenizer.pad_token = self.tokenizer.eos_token
 
     def on_test_start(self) -> None:
-
         fn = self.config.fn
 
-        db = {
-            "role": "user",
-            "content": "\n".join([
-                    fn.action.format(action=action) + fn["timeseries_id"].format(id=id)
+        db_content = "\n".join([
+                    fn.action.format(action=action) + fn.timeseries_id.format(id=id)
                     for action, id in self.trainer.datamodule.action_2_idx.items()  # type: ignore
-                ]
-            ),
-        }
+                ])
 
-        examples = self.config.examples
+        replay_data = self.config.examples
         
+        system_content = self.config.system.prompt + self.config.system[self.task].addition
+        if self.config.system.db_in_system:
+            system_content = system_content.format(mapping=db_content, answer="...")
+            print("SYSTEM PROMPT:\n", system_content)
+        else:
+            db = {
+            "role": "user",
+            "content": db_content,
+            }
+            replay_data = [db] + replay_data
 
         self.make_db_template = lambda question, ids: [
             {
                 "role": "system",
-                "content": self.config.system.prompt + self.config.system[self.task].addition,
+                "content": system_content,
             },
-            db,
-            *examples,
+            *replay_data,
             {
                 "role": "user",
                 "content": fn.timeseries.format(timeseries=','.join(map(str, ids))) + fn.question.format(question=question)
@@ -112,9 +115,10 @@ class QuantsBaseline(LightningModule):
             # attention_mask=attention_mask,
             eos_token_id=self.terminators,
             do_sample=True,
-            temperature=0.6,
+            temperature=0.1,
             pad_token_id=self.tokenizer.pad_token_id,
-            top_p=0.9,
+            top_p=0.95,
+            top_k=50,
         )
 
    
@@ -163,7 +167,8 @@ class QuantsBaseline(LightningModule):
 
         
 
-
+        valid_indices = []
+        valid_messages = []
         for i in range(batch_size):
             response = outputs[i][input_ids.shape[-1] :]
             resp_str = self.tokenizer.decode(response, skip_special_tokens=True)
@@ -201,23 +206,27 @@ class QuantsBaseline(LightningModule):
             pred_answer = int(pred_answer_str)
 
             pred_answers.append(pred_answer)
+            valid_indices.append(i)
+            valid_messages.append(messages[i])
 
         # Calculate accuracy using torchmetrics
         pred_answers_tensor = torch.tensor(
             pred_answers, dtype=torch.float32, device=self.device
         )
-       
+
+        valid_batch_answers = batch["answer"][valid_indices]
+
 
         # find indices where the similarity is 0
-        incorrect_indices = torch.where(pred_answers_tensor != batch["answer"])[0]
+        incorrect_indices = torch.where(pred_answers_tensor != valid_batch_answers)[0]
         print(
-            json.dumps([messages[i][4:] for i in incorrect_indices.tolist()], indent=4)
+            json.dumps([{"question": valid_messages[i][-1]["content"], "pred": pred_answers_tensor[i].cpu().item(), "true": valid_batch_answers[i].cpu().item()} for i in incorrect_indices.tolist()], indent=4)
         )
 
-        acc = self.test_acc(pred_answers_tensor, batch["answer"])
-        print(f"Test accuracy: {acc}")
-
-        self.log("test/acc", self.test_acc, on_step=True, on_epoch=True, prog_bar=True)
+        metrics = self.test_metrics(pred_answers_tensor, valid_batch_answers)
+        print(f"Test metrics: {metrics}")
+        
+        self.log_dict(metrics, on_step=True, on_epoch=True, prog_bar=True)
 
     def training_step(self, batch, batch_idx):
         inputs = batch["trajectory"]  # [:, :seq_len, :]

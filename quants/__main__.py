@@ -13,6 +13,9 @@ import wandb
 from omegaconf import OmegaConf
 from pathlib import Path
 import os
+import tempfile
+
+
 
 
 def qa_builder(q_template,a_template, prompts): 
@@ -61,7 +64,7 @@ def load_and_merge_configs(config_path: Path):
     return config
 
 # Path to the default configuration file
-default_config_file = Path(os.getcwd()) / "quants" / "config" / "base.yaml"
+default_config_file = Path(os.getcwd()) / "quants" / "config" / "new.yaml"
 
 
 
@@ -69,19 +72,20 @@ default_config_file = Path(os.getcwd()) / "quants" / "config" / "base.yaml"
 
 def evaluate_question_type(task, t, idx, total_types, config):
     print(f"Evaluating question type {t} ({idx}/{total_types})")
-    # if idx < 4:
-        # print(f"Skipping {t}")
-        # return
+    
 
-    # logger = AimLogger(
-    #     train_metric_prefix="train/",
-    #     test_metric_prefix="test/",
-    #     val_metric_prefix="val/",
-    #     experiment=f"quants-{task}-html/eval",
-    #     run_name=f"{t}",
-    # )
+    yaml_string = OmegaConf.to_yaml(config, resolve=True)
 
-    exp = wandb.init(project="quants", entity="maurice-kraus", group=f"{task}-{t}", job_type="eval", tags=["basic_fraction"])
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.yaml') as temp_file:
+        temp_file.write(yaml_string.encode('utf-8'))
+        temp_file_path = temp_file.name
+
+    exp = wandb.init(project="quants", entity="maurice-kraus", group=f"{task}-{t}", job_type="eval", tags=["new"])
+
+    artifact = wandb.Artifact('llm_template', type='config')
+    artifact.add_file(temp_file_path)
+    wandb.log_artifact(artifact)
+    os.remove(temp_file_path)
 
     logger = WandbLogger(experiment=exp)
 
@@ -147,7 +151,7 @@ if __name__ == "__main__":
     config = load_and_merge_configs(default_config_file)
 
     # Print configuration values
-    rich.print(OmegaConf.to_yaml(config))
+    rich.print(OmegaConf.to_yaml(config, resolve=True))
     
     # # Use map to apply the evaluate_question_type function sequentially
     for idx, t in enumerate(types):
