@@ -59,3 +59,5 @@ torchinfo
 transformers
 sentencepiece
 accelerate
+
+outlines
