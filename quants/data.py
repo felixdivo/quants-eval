@@ -130,7 +130,9 @@ class TSQADataModule(LightningDataModule):
         self.cache_path_normal.mkdir(exist_ok=True)
         # count folder in the cache path
         cnt = sum(1 for item in self.cache_path_normal.iterdir() if item.is_dir())
-        if cnt != 18:  # TODO this is hardcoded amount of question types
+        if cnt != 18 and self.task == "binary":  # TODO this is hardcoded amount of question types
+            self.process(action_split=False)
+        elif cnt != 13 and self.task == "multi":  # TODO this is hardcoded amount of question types
             self.process(action_split=False)
 
     def setup(self, stage: str) -> None:
