@@ -3,7 +3,7 @@ imports:
   - tag: tag/html.yaml
   - fn: fn/default.yaml
   - system: system/default.yaml
-  - prompts/binary/basic_fraction.yaml
+  - prompts/multi/basic.yaml
 
     
 system: 
@@ -21,4 +21,5 @@ system:
     questions should be enclosed in ${fn.answer} tags and should start with the
     ${tag.answer.start} tag. Your responses should focus on interpreting the action
     sequences accurately and providing clear answers.
+  db_in_system: false
 examples: '${qa_builder: ${fn.timeseries}${fn.question}, ${fn.answer}, ${prompts}}'
