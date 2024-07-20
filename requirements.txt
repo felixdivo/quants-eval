@@ -1,9 +1,6 @@
 black
 isort
 
-numpy
-scipy
-scikit-learn
 pandas
 
 matplotlib
@@ -17,7 +14,6 @@ rich
 aim
 omegaconf
 
-
 # jupyter
 ipykernel
 jupyter
@@ -29,20 +25,7 @@ typer
 torchmetrics
 datasets
 
-transformers
-
-# absl-py==1.2.0
 einops
-# h5py==3.7.0
-# keopscore==2.1
-# opt-einsum==3.3.0
-# pytorch-wavelet 
-# PyWavelets==1.4.1
-# scikit-image==0.19.3
-# statsmodels==0.13.2
-# sympy==1.11.1
-# sktime==0.4.1
-# ipdp
 tensorboard
 xlrd
 tabulate
@@ -56,8 +39,4 @@ nltk
 h5py
 torchinfo
 
-transformers
-sentencepiece
-accelerate
 
-outlines
