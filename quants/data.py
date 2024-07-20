@@ -9,7 +9,8 @@ from datasets import (
     DatasetDict,
     VerificationMode,
     Dataset,
-    Array2D
+    Array2D,
+    concatenate_datasets,
 )
 import os
 from torch.utils.data import DataLoader
@@ -25,7 +26,7 @@ class TSQADataModule(LightningDataModule):
         self,
         batch_size: int = 32,
         task: Literal["binary", "multi", "open", "count"] = "multi",
-        q_type: str = "", # if empty string, all question types are loaded
+        q_type: str = "",  # if empty string, all question types are loaded
     ):
         super().__init__()
 
@@ -38,7 +39,6 @@ class TSQADataModule(LightningDataModule):
         self.cache_path_normal = self.root_cache / f"{task}"
         self.q_type = q_type
         self.action_2_idx = {}
-
 
     def load_data(self, splits=["val", "train", "test"]) -> DatasetDict:
         ds = load_dataset(
@@ -73,7 +73,10 @@ class TSQADataModule(LightningDataModule):
             action_ids = convert_action(x["action_sequence"])
             return action_ids, traj
 
-        for sp in tqdm(["train", "val", "test"], desc=f"Processing splits Action Split: {action_split}"):
+        for sp in tqdm(
+            ["train", "val", "test"],
+            desc=f"Processing splits Action Split: {action_split}",
+        ):
             ds_split = ds[sp]
 
             if action_split:
@@ -110,10 +113,16 @@ class TSQADataModule(LightningDataModule):
         else:
             features = ds["train"].features
             traj_shape = features["trajectory"].shape
-            
-            features["trajectory"] = Array2D((traj_shape[0],  traj_shape[1] * traj_shape[2]), dtype=features["trajectory"].dtype)
 
-            for qt, split_dict in tqdm(question_type_gp_datasets.items(), desc="Saving question types to datasets"):
+            features["trajectory"] = Array2D(
+                (traj_shape[0], traj_shape[1] * traj_shape[2]),
+                dtype=features["trajectory"].dtype,
+            )
+
+            for qt, split_dict in tqdm(
+                question_type_gp_datasets.items(),
+                desc="Saving question types to datasets",
+            ):
                 ds_dict = DatasetDict()
                 ds_dict["train"] = Dataset.from_list(
                     split_dict["train"], features=features
@@ -122,7 +131,9 @@ class TSQADataModule(LightningDataModule):
                 ds_dict["test"] = Dataset.from_list(
                     split_dict["test"], features=features
                 )
-                ds_dict.save_to_disk(str(self.cache_path_normal / qt.replace(f"_{self.task}", "")))
+                ds_dict.save_to_disk(
+                    str(self.cache_path_normal / qt.replace(f"_{self.task}", ""))
+                )
 
     def prepare_data(self) -> None:
         if not os.path.exists(self.cache_path_action_split):
@@ -130,16 +141,39 @@ class TSQADataModule(LightningDataModule):
         self.cache_path_normal.mkdir(exist_ok=True)
         # count folder in the cache path
         cnt = sum(1 for item in self.cache_path_normal.iterdir() if item.is_dir())
-        if cnt != 18 and self.task == "binary":  # TODO this is hardcoded amount of question types
+        if (
+            cnt != 18 and self.task == "binary"
+        ):  # TODO this is hardcoded amount of question types
             self.process(action_split=False)
-        elif cnt != 13 and self.task == "multi":  # TODO this is hardcoded amount of question types
+        elif (
+            cnt != 13 and self.task == "multi"
+        ):  # TODO this is hardcoded amount of question types
             self.process(action_split=False)
 
     def setup(self, stage: str) -> None:
         if stage in ["fit", "validate"]:
             self.dataset: DatasetDict = load_from_disk(str(self.cache_path_action_split))  # type: ignore
         else:
-            self.dataset: DatasetDict = load_from_disk(str(self.cache_path_normal / self.q_type))  # type: ignore
+            if self.q_type == "":
+                print("Load all question types")
+                ds = []
+                for item in self.cache_path_normal.iterdir():
+                    q_type = item.name
+                    dataset: DatasetDict = load_from_disk(str(self.cache_path_normal / q_type))  # type: ignore
+                    ds.append(dataset)
+                # dataset_train = concatenate_datasets([d["train"] for d in ds])
+                # dataset_val = concatenate_datasets([d["val"] for d in ds])
+                dataset_test = concatenate_datasets([d["test"] for d in ds])
+                # we only fill the last dataset for train/val, because there not needed anyways
+                self.dataset = DatasetDict(
+                    {
+                        "test": dataset_test,
+                        "train": dataset["train"],
+                        "val": dataset["val"],
+                    }
+                )
+            else:
+                self.dataset: DatasetDict = load_from_disk(str(self.cache_path_normal / self.q_type))  # type: ignore
 
         self.dataset: DatasetDict = self.dataset.with_format("torch")
         with open(self.root_cache / "action2idx.pkl", "rb") as f:
@@ -165,7 +199,7 @@ class TSQADataModule(LightningDataModule):
     def test_dataloader(self) -> DataLoader:
         return DataLoader(
             self.dataset["test"],  # type: ignore
-            batch_size=14 if self.task == "binary" else 15,
+            batch_size=20 if self.task == "binary" else 15,
         )
 
     def predict_dataloader(self) -> DataLoader:
