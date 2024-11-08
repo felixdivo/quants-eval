@@ -1,3 +1,4 @@
+from enum import Enum
 from pathlib import Path
 import pickle
 from einops import rearrange
@@ -16,7 +17,33 @@ import os
 from torch.utils.data import DataLoader
 import torch
 import numpy as np
+from enum import Enum
 from tqdm import tqdm
+
+class ActionNames(Enum):
+    HOLDING_A_BABY = "holding a baby"
+    SHAKING_HANDS = "shaking hands"
+    RUNNING = "running"
+    JUMPING_ONCE = "jumping once"
+    PUNCHING = "punching"
+    GOLFING_SWINGING_A_CLUB = "golfing (swinging a club)"
+    DRINKING_WITH_THE_LEFT_HAND = "drinking with the left hand"
+    SKIPPING_ROPE = "skipping rope"
+    DANCING = "dancing"
+    WAVING = "waving"
+    PLAYING_GUITAR = "playing guitar"
+    BOWING = "bowing"
+    KICKING_A_BALL = "kicking a ball"
+    THROWING_A_BALL = "throwing a ball"
+    T_POSING = "T-posing"
+    CATCHING_A_BALL = "catching a ball"
+    PICKING_SOMETHING_UP_WITH_BOTH_HANDS = "picking something up with both hands"
+    SITTING_DOWN = "sitting down"
+    EATING_WITH_THE_RIGHT_HAND = "eating with the right hand"
+
+    @classmethod
+    def from_id(cls, id: int):
+        return list(cls)[id].value
 
 
 class TSQADataModule(LightningDataModule):
@@ -56,7 +83,7 @@ class TSQADataModule(LightningDataModule):
 
         ds = ds.with_format("torch")
 
-        action_2_idx = {}
+        action_2_idx = {action.value: i for i, action in enumerate(ActionNames)} 
 
         question_type_gp_datasets = {}
 

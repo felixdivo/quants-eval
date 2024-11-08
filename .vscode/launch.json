@@ -1,7 +1,14 @@
 {
     "version": "0.2.0",
     "configurations": [
-{
+        {
+            "name": "Quants-Debug",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "quants",
+            "args": "${command:pickArgs}"
+        },
+        {
             "name": "Quants",
             "type": "debugpy",
             "request": "launch",
@@ -13,7 +20,10 @@
             "type": "debugpy",
             "request": "launch",
             "module": "opp_qa",
-            "args": ["--kind", "mac"]
+            "args": [
+                "--kind",
+                "mac"
+            ]
         },
         {
             "name": "Text Only",

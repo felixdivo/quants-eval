@@ -1,13 +1,11 @@
 from pathlib import Path
 import rich
 import torch
-from quants.action_encoder import QuantsBaseline
+from quants.action_encoder import QuantsSegmentationBaseline, QuantsBaseline
 from quants.data import TSQADataModule
 from lightning import Trainer
 from lightning.pytorch.loggers import WandbLogger
-from aim.pytorch_lightning import AimLogger
 from argparse import ArgumentParser
-from concurrent.futures import ProcessPoolExecutor
 import wandb
 
 from omegaconf import OmegaConf
@@ -84,22 +82,22 @@ default_config_file = Path(os.getcwd()) / "quants" / "config" / "outlines.yaml"
 
 
 
-def evaluate_question_type(task, t, idx, total_types, config):
+def evaluate_question_type(task, t, idx, total_types, gt_annotations=False):
     print(f"Evaluating question type {t} ({idx}/{total_types})")
     
 
-    yaml_string = OmegaConf.to_yaml(config, resolve=True)
+    # yaml_string = OmegaConf.to_yaml(config, resolve=True)
 
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.yaml') as temp_file:
-        temp_file.write(yaml_string.encode('utf-8'))
-        temp_file_path = temp_file.name
+    # with tempfile.NamedTemporaryFile(delete=False, suffix='.yaml') as temp_file:
+    #     temp_file.write(yaml_string.encode('utf-8'))
+    #     temp_file_path = temp_file.name
 
-    exp = wandb.init(project="quants", entity="ml-research", group=f"{task}-{t}", job_type="eval", tags=["dbg"])
+    exp = wandb.init(project="quants", entity="ml-research", group=f"{task}-{t}", tags=["2xCOT-JSON"] + (["non-gt"] if gt_annotations else [])) 
 
-    artifact = wandb.Artifact('llm_template', type='config')
-    artifact.add_file(temp_file_path)
-    wandb.log_artifact(artifact)
-    os.remove(temp_file_path)
+    # artifact = wandb.Artifact('llm_template', type='config')
+    # artifact.add_file(temp_file_path)
+    # wandb.log_artifact(artifact)
+    # os.remove(temp_file_path)
 
     logger = WandbLogger(experiment=exp)
 
@@ -107,7 +105,7 @@ def evaluate_question_type(task, t, idx, total_types, config):
     
     model_ckpt_path = f"/workspaces/ts-qa/ckpts/model-{task}.ckpt"
     if Path(model_ckpt_path).exists():
-        model = QuantsBaseline(num_classes=19, task=task, config=config, gt_annotations=True)
+        model = QuantsBaseline( task=task, gt_annotations=gt_annotations)
         model.load_state_dict(
             torch.load(model_ckpt_path)["state_dict"]
         )
@@ -118,7 +116,7 @@ def evaluate_question_type(task, t, idx, total_types, config):
     trainer.test(model, data_module)
     print(f"Done evaluating question type {t}")
     print(f"Skipped {model.skipped_questions} questions")
-    exp.log({"skipped_questions": model.skipped_questions})
+    # exp.log({"skipped_questions": model.skipped_questions})
     # logger.experiment.log_info(f"Done evaluating question type {t}")
     # logger.experiment.log_info(f"Skipped {model.skipped_questions} questions")
 
@@ -126,11 +124,16 @@ def evaluate_question_type(task, t, idx, total_types, config):
     wandb.finish()
 
 if __name__ == "__main__":
+
+
+    wandb.require("core")
     parser = ArgumentParser()
     parser.add_argument("--task", type=str, default="binary")
+    parser.add_argument("--eval_seg", action="store_true")
 
     cfg = parser.parse_args()
 
+    eval_seg = cfg.eval_seg
     task = cfg.task
     task_data_folder = Path(f"/workspaces/ts-qa/preprocess_data/ts_qa/{task}")
 
@@ -138,39 +141,40 @@ if __name__ == "__main__":
     data_module = TSQADataModule(task=task, batch_size=128)
 
     # Initialize model
-    model = QuantsBaseline(num_classes=19, task=task)
+    model = QuantsSegmentationBaseline(num_classes=19)
 
     model_ckpt_path = f"/workspaces/ts-qa/ckpts/model-{task}.ckpt"
-    if Path(model_ckpt_path).exists():
-        # model.load_state_dict(
-        #     torch.load(model_ckpt_path)["state_dict"]
-        # )
-        pass
+    # if not Path(model_ckpt_path).exists() or eval_seg:
+    if True:
+        exp = wandb.init(project="quants", entity="ml-research", group=f"{task}-pretrain", tags=["debug"])
+        logger = WandbLogger(experiment=exp)
+
+        trainer = Trainer(max_epochs=3, log_every_n_steps=10, logger=logger) #, limit_train_batches=10)
+        if eval_seg:
+            model.load_state_dict(
+                torch.load(model_ckpt_path)["state_dict"]
+            )
+        else:
+            trainer.fit(model, data_module)
+            trainer.save_checkpoint(model_ckpt_path)
+
+        trainer.test(model, data_module)
     else:
-        logger = AimLogger(
-            experiment=f"quants-{task}/pretrain",
-            train_metric_prefix="train/",
-            test_metric_prefix="test/",
-            val_metric_prefix="val/",
-        )
-        trainer = Trainer(max_epochs=3, log_every_n_steps=10, logger=logger)
-        trainer.fit(model, data_module)
-        trainer.save_checkpoint(model_ckpt_path)
 
-    types = [item.name for item in task_data_folder.iterdir() if item.is_dir()][13:15]
-    print("Evaluating question types")
+        types = [item.name for item in task_data_folder.iterdir() if item.is_dir()]
+        print("Evaluating question types")
 
 
-    # Load and merge configurations
-    config = load_and_merge_configs(default_config_file)
+        # Load and merge configurations
+        # config = load_and_merge_configs(default_config_file)
 
-    console = Console()
+        # console = Console()
 
-    syntax = Syntax(OmegaConf.to_yaml(config, resolve=True), 'yaml')
-    console.print(syntax)
+        # syntax = Syntax(OmegaConf.to_yaml(config, resolve=True), 'yaml')
+        # console.print(syntax)
 
-    
-    # # Use map to apply the evaluate_question_type function sequentially
-    for idx, t in enumerate(types):
-        evaluate_question_type(task, t, idx, len(types), config)
+        
+        # # Use map to apply the evaluate_question_type function sequentially
+        for idx, t in enumerate(types):
+            evaluate_question_type(task, t, idx, len(types), True)
         
