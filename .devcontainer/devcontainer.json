@@ -13,20 +13,13 @@
 	},
 	// mount HF_HOME to the container
 	"mounts": [
+		"source=${localEnv:HOME}${localEnv:USERPROFILE}/.gitconfig,target=/root/.gitconfig,type=bind,consistency=cached",
+		// mount common-ts 
+		"source=/storage-01/common-ts,target=/common-ts,type=bind,consistency=cached",
 		// "source=${env:HF_HOME},target=/root/.cache/huggingface/,type=bind,consistency=cached",
-		{
-      "source": "${localEnv:HOME}${localEnv:USERPROFILE}/.wandb_secret",
-      "target": "/.wandb_secret",
-      "type": "bind",
-      "consistency": "ro",
-      "optional": true
-    },
 		"source=/storage-02/common-repos,target=/common-repos,type=bind,consistency=cached"
-
 	],
-	"containerEnv": {
-		"HF_HOME": "/root/.cache/huggingface/"
-	},
+	
 	"postCreateCommand": "huggingface-cli login --token $HF_TOKEN",
 	"remoteUser": "root",
 	"customizations": {
@@ -44,9 +37,11 @@
 	},
 	"runArgs": [
 		"--gpus",
-		"device=4",
+		"device=0",
 		// "\"device=1,2\""
 		"--shm-size",
-		"50G"
+		"50G",
+		"--env-file",
+		"${localEnv:HOME}${localEnv:USERPROFILE}/.container_secrets"
 	]
 }
