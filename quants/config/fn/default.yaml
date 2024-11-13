@@ -1,0 +1,7 @@
+action: ${tag.action.start}{action}${tag.action.end}
+timeseries_id: ${tag.timeseries_id.start}{id}${tag.timeseries_id.end}
+question: ${tag.question.start}{question}${tag.question.end}
+timeseries: ${tag.timeseries.start}{timeseries}${tag.timeseries.end}
+answer: ${tag.answer.start}{answer}${tag.answer.end}
+explanation: ${tag.explanation.start}{explanation}${tag.explanation.end}
+    

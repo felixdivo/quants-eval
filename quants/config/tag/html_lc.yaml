@@ -1,0 +1,23 @@
+action: 
+  start: "<action>"
+  end: "</action>"
+
+timeseries_id: 
+  start: "<timeseriesID>"
+  end: "</timeseriesID>"
+
+question:
+  start: "<question>"
+  end: "</question>"
+
+timeseries:
+  start: "<timeseries>"
+  end: "</timeseries>"
+
+answer:
+  start: "<answer>"
+  end: "</answer>"
+
+explanation:
+  start: "<EXPLANATION>"
+  end: "</EXPLANATION>"

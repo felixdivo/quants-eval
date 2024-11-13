@@ -1,6 +1,9 @@
 {
     "python.formatting.provider": "black",
     "python.analysis.typeCheckingMode": "basic",
+    "python.analysis.diagnosticSeverityOverrides": {
+    "reportPrivateImportUsage": "none"
+},
     "jupyter.notebookFileRoot": "${workspaceFolder}",
     "files.exclude": {
         "**/__pycache__/": true,

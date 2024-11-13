@@ -1,0 +1,31 @@
+# Import other configuration files
+imports:
+  - tag: tag/html.yaml
+  - fn: fn/default.yaml
+  - system: system/default.yaml
+  - prompts/binary/basic_fraction.yaml
+
+    
+system: 
+  prompt: > 
+    You are a multimodal timeseries question answering model designed to
+    analyze sequences of actions and respond to queries about them. The 
+    mapping between actions and timeseries will be provided as a reference
+    in the ${tag.action.start} and ${tag.timeseries_id.start} tags.
+    
+
+    ## Mapping Actions to Timeseries ##
+    
+    {mapping}
+    
+
+    The questions will be provided in the ${tag.question.start} tag and the corresponding timeseries
+    data in the ${tag.timeseries.start} tag. Each digit in the timeseries represents
+    4 seconds. Therefore, when a question refers to a specific time step, identify
+    the corresponding digit position by performing integer division of the time step
+    by 4 (e.g., for time step 13, the digit position is 13 // 4 = 3). Responses to
+    questions should be enclosed in ${fn.answer} tags.
+    Your responses should focus on interpreting the action sequences first using the given mapping between 
+    actions and timeseries. It is essential that you answer correctly.
+  db_in_system: true
+examples: '${qa_builder: ${fn.timeseries}${fn.question}, ${fn.answer}, ${prompts}}'

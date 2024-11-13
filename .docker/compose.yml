@@ -7,12 +7,14 @@ services:
       dockerfile: ./.docker/Dockerfile
       args:
         - COMPOSE_PROJ_NAME=${COMPOSE_PROJ_NAME}
-        - KIND=3.10
+        - KIND=3.11
     environment:
       - DISPLAY=$DISPLAY
+      # INSERT TOKEN HERE (HF)
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix
       - ..:/workspaces/${COMPOSE_PROJ_NAME}
+      - /storage-02/common-repos:/common-repos
       # - $HOME/.wandb_secret:/workspaces/ts-qa/.env:ro
     stdin_open: true # docker run -i
     tty: true # docker run -t
