@@ -8,18 +8,13 @@
 		"args": {
 			"COMPOSE_PROJ_NAME": "ts-qa",
 			"KIND": "3.11",
-			"GITHUB_TOKEN": "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"
 		}
 	},
-	// mount HF_HOME to the container
 	"mounts": [
-		"source=${localEnv:HOME}${localEnv:USERPROFILE}/.gitconfig,target=/root/.gitconfig,type=bind,consistency=cached",
-		// mount common-ts 
+		// "source=${localEnv:HOME}${localEnv:USERPROFILE}/.gitconfig,target=/root/.gitconfig,type=bind,consistency=cached",
 		"source=/storage-01/common-ts,target=/common-ts,type=bind,consistency=cached",
-		// "source=${env:HF_HOME},target=/root/.cache/huggingface/,type=bind,consistency=cached",
-		"source=/storage-02/common-repos,target=/common-repos,type=bind,consistency=cached"
+		"source=/storage-02/common-repos,target=/common-repos,type=bind,consistency=cached,readonly"
 	],
-	
 	"postCreateCommand": "huggingface-cli login --token $HF_TOKEN",
 	"remoteUser": "root",
 	"customizations": {
@@ -31,17 +26,17 @@
 				"genieai.chatgpt-vscode",
 				"ms-toolsai.jupyter",
 				"mikestead.dotenv",
-				"ms-python.black-formatter"
+				"charliermarsh.ruff"
 			]
 		}
 	},
 	"runArgs": [
 		"--gpus",
-		"device=0",
+		"device=04",
 		// "\"device=1,2\""
 		"--shm-size",
 		"50G",
-		"--env-file",
-		"${localEnv:HOME}${localEnv:USERPROFILE}/.container_secrets"
+		// "--env-file",
+		// "${localEnv:HOME}${localEnv:USERPROFILE}/.container_secrets"
 	]
 }

@@ -1,7 +1,7 @@
-black
-isort
+ruff
 
-pandas
+numpy>=2.2.1  # Debug this
+pandas[parquet,hdf5] # performance
 
 matplotlib
 seaborn
@@ -14,7 +14,6 @@ rich
 aim
 omegaconf
 
-# jupyter
 ipykernel
 jupyter
 ipywidgets
@@ -22,21 +21,17 @@ ipywidgets
 python-dotenv
 pyrootutils
 typer
-torchmetrics
 datasets
 
 einops
-tensorboard
-xlrd
-tabulate
-xlwt
-xlutils
-sktime
-aeon
+torchmetrics
+#tensorboard
+#xlrd
+#tabulate
+#xlwt
+#xlutils
+# sktime
+# aeon
 
 # oppqa
 nltk
-h5py
-torchinfo
-
-

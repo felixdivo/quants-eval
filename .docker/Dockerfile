@@ -4,7 +4,6 @@ ARG KIND=3.11
 FROM mkrausio/ml_research:base-3.11-cuda-12.1.0
 # FROM mkrausio/ml_research:torch-v2.3.1-3.11-cuda-12.1.0
 
-
 ARG COMPOSE_PROJ_NAME="ts-qa"
 ARG GITHUB_TOKEN
 ARG CUDA_VERSION=12.1.0
@@ -19,11 +18,13 @@ RUN apt autoremove python3 -y &&\
   ln -s /usr/bin/python${KIND} /usr/bin/python3 &&\
   ln -s /usr/bin/pip${KIND} /usr/bin/pip3 
 
-RUN apt update && apt install git-lfs && git lfs install
+RUN apt update && apt install git-lfs python3.11-dev -y && git lfs install
 
 RUN mkdir -p workspaces/$PROJECT_NAME
 
 WORKDIR /workspaces/$PROJECT_NAME
+
+ENV HF_HOME=/workspaces/$PROJECT_NAME/.cache/huggingface
 
 COPY requirements.txt .
 
