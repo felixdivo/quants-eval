@@ -1,7 +1,8 @@
 ruff
 
-numpy>=2.2.1  # Debug this
-pandas[parquet,hdf5] # performance
+# Unfortunately, this is required
+numpy<2.0.0
+pandas[performance,parquet,hdf5]<2.2.0
 
 matplotlib
 seaborn
@@ -30,7 +31,6 @@ torchmetrics
 #tabulate
 #xlwt
 #xlutils
-# sktime
 # aeon
 
 # oppqa
