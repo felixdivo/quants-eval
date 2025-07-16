@@ -3,6 +3,7 @@ ruff
 # Unfortunately, this is required
 numpy<2.0.0
 pandas[performance,parquet,hdf5]<2.2.0
+scipy
 
 matplotlib
 seaborn
@@ -36,5 +37,5 @@ torchmetrics
 # oppqa
 nltk
 
-padantic
+pydantic
 pandarallel
