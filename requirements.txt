@@ -23,7 +23,7 @@ ipywidgets
 python-dotenv
 pyrootutils
 typer
-datasets
+datasets>=2.15.0
 
 einops
 torchmetrics

@@ -18,7 +18,7 @@ RUN apt autoremove python3 -y &&\
   ln -s /usr/bin/python${KIND} /usr/bin/python3 &&\
   ln -s /usr/bin/pip${KIND} /usr/bin/pip3 
 
-RUN apt update && apt install git-lfs python3.11-dev -y && git lfs install
+RUN apt update && apt install git-lfs python3.11-dev libnuma-dev -y && git lfs install
 
 RUN mkdir -p workspaces/$PROJECT_NAME
 
@@ -39,7 +39,6 @@ RUN pip install "sglang[all]"
 RUN pip install flashinfer -i https://flashinfer.ai/whl/cu121/torch2.3/
 
 RUN pip install -U setuptools
-
 
 # RUN mkdir -p /data && cd /data && wget https://nlp.stanford.edu/data/glove.6B.zip --no-check-certificate && unzip glove.6B.zip
 # RUN python -m nltk.downloader punkt

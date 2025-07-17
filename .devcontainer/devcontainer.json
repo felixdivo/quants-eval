@@ -13,7 +13,7 @@
 	"mounts": [
 		// "source=${localEnv:HOME}${localEnv:USERPROFILE}/.gitconfig,target=/root/.gitconfig,type=bind,consistency=cached",
 		"source=/storage-01/common-ts,target=/common-ts,type=bind,consistency=cached",
-		"source=/storage-02/common-repos,target=/common-repos,type=bind,consistency=cached,readonly"
+		//"source=/storage-02/common-repos,target=/common-repos,type=bind,consistency=cached,readonly"
 	],
 	"postCreateCommand": "huggingface-cli login --token $HF_TOKEN",
 	"remoteUser": "root",
@@ -33,10 +33,12 @@
 	"runArgs": [
 		"--gpus",
 		"device=04",
-		// "\"device=1,2\""
+		// "\"device=1,2\"",
 		"--shm-size",
-		"50G",
+		"100G",
 		// "--env-file",
-		// "${localEnv:HOME}${localEnv:USERPROFILE}/.container_secrets"
+		// "${localEnv:HOME}${localEnv:USERPROFILE}/.container_secrets",
+		"--network",
+	    "shared_net"
 	]
 }
