@@ -26,7 +26,8 @@
 				"genieai.chatgpt-vscode",
 				"ms-toolsai.jupyter",
 				"mikestead.dotenv",
-				"charliermarsh.ruff"
+				"charliermarsh.ruff",
+				"mechatroner.rainbow-csv"
 			]
 		}
 	},
