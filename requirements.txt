@@ -11,7 +11,7 @@ plotly
 
 git+https://github.com/mauricekraus/rtpt@callbacks
 wandb
-lightning
+lightning>=2.5.2
 rich
 aim
 omegaconf
