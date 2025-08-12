@@ -137,5 +137,9 @@ outputs
 .aim
 preprocess_data
 models
-OFA_cls
 plots
+
+eval-all/**/*.csv
+eval-all/**/*.h5
+eval-all/**/*.json
+eval-all/**/*.jsonl
