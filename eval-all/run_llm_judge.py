@@ -8,6 +8,7 @@ python -m sglang.launch_server --model-path Qwen/Qwen3-8B-AWQ --port 30000 --hos
 ```
 """
 
+from time import sleep
 from typing import Any, Literal
 from pathlib import Path
 import json
@@ -15,6 +16,7 @@ from collections import defaultdict
 import shutil
 import warnings
 
+import openai
 import pandas as pd
 
 from pydantic import BaseModel, Field
@@ -164,12 +166,21 @@ if __name__ == "__main__":
             }
 
         # Else, we need to actually ask the judge
-        string_answer = run_judge(row, client)
+        try:
+            string_answer = run_judge(row, client)
+
+        except openai.InternalServerError as e:  # This sometimes fails
+            if "All retry attempts failed" in str(e):
+                # Retry once
+                sleep(10)
+                string_answer = run_judge(row, client)
+            else:
+                raise e
 
         # Parse the JSON
         return string_answer, decode(string_answer)
 
-    chunk_size = 5_000
+    chunk_size = 20_000
     with Progress(
         TextColumn("[progress.description]{task.description}"),
         BarColumn(),
@@ -213,5 +224,4 @@ if __name__ == "__main__":
                     df.to_hdf(file_target, key="data", mode="w", complevel=7)
 
                 progress.remove_task(task_in_chunk)
-
-            progress.update(task_chunks, advance=1)
+                progress.update(task_chunks, advance=1)
