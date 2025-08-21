@@ -27,7 +27,8 @@
 				"ms-toolsai.jupyter",
 				"mikestead.dotenv",
 				"charliermarsh.ruff",
-				"mechatroner.rainbow-csv"
+				"mechatroner.rainbow-csv",
+				"ms-toolsai.datawrangler"
 			]
 		}
 	},

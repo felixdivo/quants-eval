@@ -24,6 +24,7 @@ python-dotenv
 pyrootutils
 typer
 datasets>=2.15.0
+evaluate
 
 einops
 torchmetrics

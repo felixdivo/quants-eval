@@ -45,7 +45,7 @@ def run_judge(row: pd.Series, client: OpenAI) -> str:
         str: The JSON response from the LLM judge containing the rating and rationale.
     """
 
-    JUDGE_PROMPT_TEMPLATE = """You will be given a scene_description with timesamps and a scene_question regarding that scene. You will also be given a reference_answer and system_answer couple.
+    JUDGE_PROMPT_TEMPLATE = """You will be given a scene_description with timestamps and a scene_question regarding that scene. You will also be given a reference_answer and system_answer couple.
     Your task is to provide a TotalRating scoring how well the system_answer answers the user concerns expressed in the scene_question. The reference_answer is provided as reference for a very good answer.
     Give your answer on a scale of 1 to 3, where 1 means that the system_answer is not helpful at all, and 3 means that the system_answer completely and helpfully addresses the scene_question.
     You will also provide a brief rationale for your rating.
