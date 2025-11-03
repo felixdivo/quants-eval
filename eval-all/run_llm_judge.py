@@ -1,5 +1,7 @@
 """
 ```shell
+cd ts-qa-sg
+docker network create shared_net
 docker compose -f .docker/compose.yml -f .docker/compose.dev.yml -f .docker/compose.cuda.yml run --build ts-qa-sg
 
 -> in container
@@ -138,7 +140,7 @@ if __name__ == "__main__":
 
     # Name taken from LAST column of `docker container ls` (NOT the id, but the name)
     # server_url = "http://docker-ts-qa-sg-run-2e4f39436b32:30000"
-    server_url = "http://172.19.0.3:30000"
+    server_url = "http://172.18.0.2:30000"
     set_default_backend(RuntimeEndpoint(server_url))  # Checks the connection
     print(f"Successfully connected to server at {server_url}")
     client = OpenAI(api_key="EMPTY", base_url=server_url + "/v1")
@@ -158,7 +160,7 @@ if __name__ == "__main__":
         df["llm_judge_score"] = pd.NA
 
     def process_row(row) -> tuple[str, dict[str, Any]]:
-        # We only do open, and we do not want to re-evaluate unnecessaryly
+        # We only do open, and we do not want to re-evaluate unnecessarily
         if row["answer_type"] != "open" or pd.notna(row["llm_judge_raw"]):
             return row["llm_judge_raw"], {
                 "BriefRationale": row["llm_judge_rationale"],
