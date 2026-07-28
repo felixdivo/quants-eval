@@ -1,31 +1,26 @@
 // For format details, see https://aka.ms/devcontainer.json. For config options, see the
 // README at: https://github.com/devcontainers/templates/tree/main/src/python
 {
-	"name": "ts-qa",
+	"name": "quants-eval",
 	"build": {
 		"dockerfile": "../.docker/Dockerfile",
 		"context": "..",
 		"args": {
-			"COMPOSE_PROJ_NAME": "ts-qa",
+			"COMPOSE_PROJ_NAME": "quants-eval",
 			"KIND": "3.11",
 		}
 	},
 	"mounts": [
-		// "source=${localEnv:HOME}${localEnv:USERPROFILE}/.gitconfig,target=/root/.gitconfig,type=bind,consistency=cached",
-		"source=/storage-01/common-ts,target=/common-ts,type=bind,consistency=cached",
-		//"source=/storage-02/common-repos,target=/common-repos,type=bind,consistency=cached,readonly"
+		//"source=/storage-01/common-ts,target=/common-ts,type=bind,consistency=cached",
 	],
-	"postCreateCommand": "huggingface-cli login --token $HF_TOKEN",
+	// "onCreateCommand": "hf auth login --token $HF_TOKEN",
 	"remoteUser": "root",
 	"customizations": {
 		"vscode": {
 			"extensions": [
 				"ms-python.python",
 				"tamasfe.even-better-toml",
-				"github.copilot",
-				"genieai.chatgpt-vscode",
 				"ms-toolsai.jupyter",
-				"mikestead.dotenv",
 				"charliermarsh.ruff",
 				"mechatroner.rainbow-csv",
 				"ms-toolsai.datawrangler"
@@ -33,14 +28,11 @@
 		}
 	},
 	"runArgs": [
-		"--gpus",
-		"device=04",
-		// "\"device=1,2\"",
-		"--shm-size",
-		"100G",
-		// "--env-file",
-		// "${localEnv:HOME}${localEnv:USERPROFILE}/.container_secrets",
-		"--network",
-	    "shared_net"
+		"--shm-size=100G",
+        "--memory=100g",
+        "--memory-swap=100g",
+		"--cpus=64",
+		"--device", "nvidia.com/gpu=1",
+		// "--network", "shared_net"
 	]
 }

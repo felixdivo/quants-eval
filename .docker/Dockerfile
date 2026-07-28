@@ -1,9 +1,8 @@
 # syntax = docker/dockerfile:1.2
 ARG KIND=3.11
-# FROM lmsysorg/sglang:latest 
 FROM mkrausio/ml_research:base-3.11-cuda-12.1.0
 
-ARG COMPOSE_PROJ_NAME="ts-qa"
+ARG COMPOSE_PROJ_NAME="quants-eval"
 ARG GITHUB_TOKEN
 ARG CUDA_VERSION=12.1.0
 
