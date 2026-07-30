@@ -11,9 +11,8 @@
 		}
 	},
 	"mounts": [
-		//"source=/storage-01/common-ts,target=/common-ts,type=bind,consistency=cached",
+	    {"source": "/storage-01/common-ts", "target": "/common-ts", "type": "bind", "consistency": "cached"}
 	],
-	// "onCreateCommand": "hf auth login --token $HF_TOKEN",
 	"remoteUser": "root",
 	"customizations": {
 		"vscode": {

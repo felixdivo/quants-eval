@@ -35,7 +35,7 @@ do
         --model_name_or_path $MODEL \
         --output_dir $OUTPUT_DIR \
         --log_dir $LOG_DIR \
-        --dataset_name dasyd/time-qa \
+        --dataset_name dasyd/quants \
         --context_column textual_description \
         --question_column question \
         --do_train \
@@ -61,7 +61,7 @@ do
         --model_name_or_path $MODEL \
         --output_dir $OUTPUT_DIR \
         --log_dir $LOG_DIR \
-        --dataset_name dasyd/time-qa \
+        --dataset_name dasyd/quants \
         --context_column textual_description \
         --question_column question \
         --lora_alpha 32 \

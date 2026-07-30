@@ -22,7 +22,7 @@ torchrun --nproc_per_node 2 ~/finetune.py \
     --model_name_or_path $MODEL \
     --output_dir $OUTPUT_DIR \
     --log_dir $LOG_DIR \
-    --dataset_name dasyd/time-qa \
+    --dataset_name dasyd/quants \
     --context_column textual_description \
     --question_column question \
     --do_train \

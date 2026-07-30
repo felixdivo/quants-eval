@@ -47,7 +47,7 @@ class ActionNames(Enum):
 
 
 class TSQADataModule(LightningDataModule):
-    KEY = "dasyd/time-qa"
+    KEY = "dasyd/quants"
 
     def __init__(
         self,
