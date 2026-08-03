@@ -20,7 +20,7 @@ repository root as the working directory.
 | --- | --- |
 | `consolidate_data.ipynb` | Joins the raw per-experiment CSVs in `eval-all/data/<section>/` with the `dasyd/quants` dataset into `all_joined.h5`. |
 | `eval_llm_judge.ipynb` (+ `run_llm_judge.py`) | Scores the open answers with the LLM judge, checks its agreement with the human reference ratings, and yields `all_joined_judged.h5`. |
-| `compute-metrics.ipynb` | Computes the result tables (`all_results_{binary,multi,open}.csv`) and the finetuning-dataset-size figures. |
+| `compute-metrics.ipynb` | Computes the result tables (`all_results_{binary,multi,open}.csv`) and the finetuning-dataset-size figures. Its last section breaks Humans and xQA-Qwen on AE down over all 45 question types (`question_type_breakdown.{csv,pdf}`). |
 | `dataset-diversity-overview.ipynb` | Question-type distributions of QuAnTS and of the datasets it is compared against. |
 | `action-difficulty.ipynb` | Per-action recognition F1 from the human identification sub-study, and how human QA performance changes when a hard-to-recognise action is named in the question or answer. |
 
