@@ -1,47 +1,47 @@
-# ts-qa
+# QuAnTS: Question Answering on Time Series
 
-Question Answering for Time Series 🚀
+Training and evaluation code for [QuAnTS](https://huggingface.co/datasets/dasyd/quants),
+a question-answering dataset built from human-motion trajectories. The experiments cover
+binary, multiple-choice, and open-ended answers.
 
-## Howto use
-To run the project one can either build the vscode devcontainer or run a headless compose version. For this one can leverage the given makefile. 
-Executing the make file requires a unix/linux environment.
+[Paper](https://openreview.net/forum?id=bNCDElSOXB) ·
+[Dataset](https://huggingface.co/datasets/dasyd/quants)
 
-- Running `make` builds the container and then attaches to the shell of the container
-- One must manually stop and/or remove the running container. This can be done by running `make stop` and/or `make remove` or `make stop_remove`.
+## Repository map
 
-Also run `pip install -e .`.
-
-## Naive, Q2, and Q3 experiments
-
-The Q2 (question-only), Q3 (time-series-only), and Naive
-(time-series + question) Llama 3.1 experiments and complete SLURM workflow are
-documented in [`benchmark/`](benchmark/README.md).
-
-## Analysis notebooks
-
-The evaluation of the trained models and all paper figures live in `eval-all/`. They expect the
-repository root as the working directory.
-
-| Notebook | Purpose |
+| Path | Contents |
 | --- | --- |
-| `consolidate_data.ipynb` | Joins the raw per-experiment CSVs in `eval-all/data/<section>/` with the `dasyd/quants` dataset into `all_joined.h5`. |
-| `eval_llm_judge.ipynb` (+ `run_llm_judge.py`) | Scores the open answers with the LLM judge, checks its agreement with the human reference ratings, and yields `all_joined_judged.h5`. |
-| `compute-metrics.ipynb` | Computes the result tables (`all_results_{binary,multi,open}.csv`) and the finetuning-dataset-size figures. Its last section breaks Humans and xQA-Qwen on AE down over all 45 question types (`question_type_breakdown.{csv,pdf}`). |
-| `dataset-diversity-overview.ipynb` | Question-type distributions of QuAnTS and of the datasets it is compared against. |
-| `action-difficulty.ipynb` | Per-action recognition F1 from the human identification sub-study, and how human QA performance changes when a hard-to-recognise action is named in the question or answer. |
+| [`benchmark/`](benchmark/README.md) | Llama 3.1 8B Naive, Q2 question-only, and Q3 time-series-only experiments |
+| [`action_encoder/`](action_encoder/README.md) | xLSTMMixer action encoder and xQA with ground-truth or predicted actions |
+| [`analysis/`](analysis/README.md) | Paper tables, figures, and dataset analysis |
 
-`action-difficulty.ipynb` needs neither a GPU nor the training dependencies, so it can also be run
-outside the container:
+## Experiments
+
+The Llama experiments train one QLoRA adapter per input configuration and answer format.
+Time-series prompts contain compact nested JSON for the full `[320, 24, 3]` trajectory,
+scaled to `[-999, 999]` and checked against the model context limit.
+
+The xQA pipeline splits each trajectory into four 80-frame segments. An xLSTMMixer
+classifier predicts one of 19 actions for each segment, and the language model answers
+questions from either the released action sequence or the predicted sequence.
+
+Each experiment directory contains its own pinned `uv.lock`, tests, command-line tools,
+and SLURM submission pipeline. Start with the README in the corresponding directory.
+
+## Development checks
 
 ```bash
-uv venv .venv-host --python 3.11
-uv pip install --python .venv-host "numpy<2" "pandas<2.2" tables matplotlib seaborn scipy torchmetrics jupyter
-.venv-host/bin/jupyter nbconvert --execute --inplace eval-all/action-difficulty.ipynb
+uv lock --check --project benchmark
+uv lock --check --project action_encoder
+uv lock --check --project analysis
+
+uv run --frozen --project benchmark --extra test pytest benchmark/tests
+uv run --frozen --project action_encoder --extra dev pytest action_encoder/tests
 ```
 
-## xLSTMMixer action encoder and xQA
+Model and dataset credentials are read from environment variables. The SLURM workflows
+use workspace-local environments, caches, logs, checkpoints, and result directories.
 
-The supported xLSTMMixer action-encoder/xQA implementation lives in
-[`action_encoder/`](action_encoder/README.md). It provides validated QuAnTS
-segmentation, training, GT-action and predicted-action xQA, resumable CSV generation
-and validation, post-hoc action metrics, CPU tests, and SLURM examples.
+## Citation
+
+Citation metadata for the paper and software is available in [`CITATION.cff`](CITATION.cff).

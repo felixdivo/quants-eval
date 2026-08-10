@@ -1,5 +1,0 @@
-binary:
-  addition: Please ONLY either return '0' for False or '1' for True.
-
-multi:
-  addition: Please ONLY return the number 0 for answer A, 1 for answer B, and 2 for answer C.
