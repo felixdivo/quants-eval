@@ -38,3 +38,10 @@ uv venv .venv-host --python 3.11
 uv pip install --python .venv-host "numpy<2" "pandas<2.2" tables matplotlib seaborn scipy torchmetrics jupyter
 .venv-host/bin/jupyter nbconvert --execute --inplace eval-all/action-difficulty.ipynb
 ```
+
+## xLSTMMixer action encoder and xQA
+
+The supported xLSTMMixer action-encoder/xQA implementation lives in
+[`action_encoder/`](action_encoder/README.md). It provides validated QuAnTS
+segmentation, training, GT-action and predicted-action xQA, resumable CSV generation
+and validation, post-hoc action metrics, CPU tests, and SLURM examples.

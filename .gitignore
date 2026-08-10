@@ -154,3 +154,14 @@ eval-all/**/*.csv
 eval-all/**/*.h5
 eval-all/**/*.json
 eval-all/**/*.jsonl
+
+# xLSTMMixer action-encoder runtime artifacts
+action_encoder/.venv/
+action_encoder/.cache/
+action_encoder/artifacts/
+action_encoder/checkpoints/
+action_encoder/data/
+action_encoder/logs/
+action_encoder/results/
+action_encoder/*.partial
+action_encoder/*.meta.json
