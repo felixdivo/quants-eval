@@ -140,6 +140,16 @@ preprocess_data
 models
 plots
 
+# QuAnTS ablation runtime data (reported_results remains tracked)
+/benchmark/.venv/
+/benchmark/.venv-sglang/
+/benchmark/cache/
+/benchmark/models/
+/benchmark/data/
+/benchmark/artifacts/
+/benchmark/logs/
+/benchmark/results/
+
 eval-all/**/*.csv
 eval-all/**/*.h5
 eval-all/**/*.json

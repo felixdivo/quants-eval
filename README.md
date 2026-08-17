@@ -11,6 +11,12 @@ Executing the make file requires a unix/linux environment.
 
 Also run `pip install -e .`.
 
+## Naive, Q2, and Q3 experiments
+
+The Q2 (question-only), Q3 (time-series-only), and Naive
+(time-series + question) Llama 3.1 experiments and complete SLURM workflow are
+documented in [`benchmark/`](benchmark/README.md).
+
 ## Analysis notebooks
 
 The evaluation of the trained models and all paper figures live in `eval-all/`. They expect the
