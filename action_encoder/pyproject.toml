@@ -1,0 +1,56 @@
+[build-system]
+requires = ["hatchling==1.27.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "quants-action-encoder"
+version = "0.1.0"
+description = "Pinned QuAnTS xLSTMMixer action encoder and xQA evaluation"
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+  "aiohttp==3.12.15",
+  "datasets==3.6.0",
+  "huggingface-hub==0.35.1",
+  "nltk==3.9.1",
+  "numpy==1.26.4",
+  "rouge-score==0.1.2",
+  "safetensors==0.5.3",
+  "torch==2.4.0",
+  "transformers @ https://github.com/mauricekraus/transformers/archive/e97fc33f97155b79658af37fde29b39b5139e066.tar.gz",
+  "xlstm==2.0.5",
+]
+
+[project.optional-dependencies]
+analysis = ["matplotlib==3.10.3"]
+dev = [
+  "pytest==8.4.1",
+  "ruff==0.12.8",
+]
+
+[project.scripts]
+quants-action-train = "quants_action_encoder.train:main"
+quants-action-data-preflight = "quants_action_encoder.data:preflight_main"
+quants-action-predict = "quants_action_encoder.generate:predict_main"
+quants-action-xqa = "quants_action_encoder.generate:xqa_main"
+quants-xqa-judge = "quants_action_encoder.generate:judge_main"
+quants-action-metrics = "quants_action_encoder.metrics:main"
+quants-xqa-metrics = "quants_action_encoder.metrics:xqa_metrics_main"
+quants-xqa-aggregate = "quants_action_encoder.metrics:aggregate_xqa_metrics_main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/quants_action_encoder"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]

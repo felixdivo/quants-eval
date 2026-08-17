@@ -1,6 +1,0 @@
-prompts:
-  - timeseries: 2,8,10,11
-    question: "What is the person doing before dancing? A: waving, B: T-posing or C: running?"
-    answer: 2
-    description: example_query
-    explanation: example_explanation

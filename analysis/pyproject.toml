@@ -1,0 +1,24 @@
+[project]
+name = "quants-analysis"
+version = "0.1.0"
+description = "Analysis notebooks for QuAnTS"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+  "datasets==4.1.1",
+  "evaluate==0.4.5",
+  "ipykernel==6.30.1",
+  "jupyter==1.1.1",
+  "matplotlib==3.10.3",
+  "numpy==2.2.6",
+  "pandas==2.3.2",
+  "pyarrow==21.0.0",
+  "scipy==1.16.1",
+  "seaborn==0.13.2",
+  "tables==3.10.2",
+  "torch==2.8.0",
+  "torchmetrics==1.8.2",
+  "tqdm==4.67.1",
+]
+
+[tool.uv]
+package = false
