@@ -1,0 +1,35 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite the QuAnTS paper."
+title: "QuAnTS Evaluation"
+type: software
+version: 0.1.0
+authors:
+  - family-names: Divo
+    given-names: Felix
+  - family-names: Kraus
+    given-names: Maurice
+repository-code: "https://github.com/felixdivo/quants-eval"
+url: "https://openreview.net/forum?id=bNCDElSOXB"
+preferred-citation:
+  type: article
+  title: "QuAnTS: Question Answering on Time Series"
+  year: 2026
+  journal: "Journal of Data-centric Machine Learning Research"
+  url: "https://openreview.net/forum?id=bNCDElSOXB"
+  authors:
+    - family-names: Divo
+      given-names: Felix
+    - family-names: Kraus
+      given-names: Maurice
+    - family-names: Nguyen
+      given-names: "Anh Q."
+    - family-names: Xue
+      given-names: Hao
+    - family-names: Razzak
+      given-names: Imran
+    - family-names: Salim
+      given-names: "Flora D."
+    - family-names: Kersting
+      given-names: Kristian
+    - family-names: Dhami
+      given-names: "Devendra Singh"
