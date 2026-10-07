@@ -9,13 +9,14 @@ authors:
   - family-names: Kraus
     given-names: Maurice
 repository-code: "https://github.com/felixdivo/quants-eval"
-url: "https://openreview.net/forum?id=bNCDElSOXB"
+url: "https://arxiv.org/abs/2511.05124"
 preferred-citation:
   type: article
   title: "QuAnTS: Question Answering on Time Series"
-  year: 2026
-  journal: "Journal of Data-centric Machine Learning Research"
-  url: "https://openreview.net/forum?id=bNCDElSOXB"
+  year: 2025
+  journal: "arXiv preprint arXiv:2511.05124"
+  doi: "10.48550/arXiv.2511.05124"
+  url: "https://arxiv.org/abs/2511.05124"
   authors:
     - family-names: Divo
       given-names: Felix

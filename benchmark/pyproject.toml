@@ -5,6 +5,10 @@ build-backend = "hatchling.build"
 [project]
 name = "quants-ablation"
 version = "0.1.0"
+authors = [
+  { name = "Felix Divo", email = "felix.divo@tu-darmstadt.de" },
+  { name = "Maurice Kraus", email = "maurice.kraus@tu-darmstadt.de" },
+]
 description = "QuAnTS Q2 question-only, Q3 time-series-only, and Naive TS + Question ablations"
 requires-python = ">=3.11,<3.13"
 dependencies = [

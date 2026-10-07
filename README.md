@@ -1,11 +1,14 @@
-# QuAnTS: Question Answering on Time Series
+# QuAnTS: Question Answering on Time Series – Evaluation
+
+[![arXiv](https://img.shields.io/badge/arXiv-2511.05124-b31b1b.svg?logo=arxiv&logoColor=white)](https://arxiv.org/abs/2511.05124)
+[![Project Website](https://img.shields.io/badge/Project-Website-1f4e79.svg)](https://mauricekraus.github.io/quants-generate/)
+[![Dataset on Hugging Face](https://img.shields.io/badge/Hugging%20Face-Dataset-ffd21e.svg?logo=huggingface)](https://huggingface.co/datasets/dasyd/quants)
+[![Dataset Generation on GitHub](https://img.shields.io/badge/GitHub-Dataset%20Generation-blue.svg?logo=github)](https://github.com/mauricekraus/quants-generate)
+[![Evaluation on GitHub](https://img.shields.io/badge/GitHub-Evaluation-blue.svg?logo=github)](https://github.com/felixdivo/quants-eval)
 
 Training and evaluation code for [QuAnTS](https://huggingface.co/datasets/dasyd/quants),
 a question-answering dataset built from human-motion trajectories. The experiments cover
 binary, multiple-choice, and open-ended answers.
-
-[Paper](https://openreview.net/forum?id=bNCDElSOXB) ·
-[Dataset](https://huggingface.co/datasets/dasyd/quants)
 
 ## Repository map
 

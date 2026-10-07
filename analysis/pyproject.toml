@@ -1,6 +1,10 @@
 [project]
 name = "quants-analysis"
 version = "0.1.0"
+authors = [
+  { name = "Felix Divo", email = "felix.divo@tu-darmstadt.de" },
+  { name = "Maurice Kraus", email = "maurice.kraus@tu-darmstadt.de" },
+]
 description = "Analysis notebooks for QuAnTS"
 requires-python = ">=3.11,<3.13"
 dependencies = [
